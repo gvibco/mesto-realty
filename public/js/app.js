@@ -20,14 +20,29 @@ import {
   errors,
   busy,
 } from "./core.js";
-import { authPage, accountPage, editorPage } from "./forms.js";
 import { initAssistant } from "./assistant.js";
-import { mountRoomModel } from "./room-model.js";
 const main = document.querySelector("#main");
 initAssistant();
+// Session loads in parallel with the first render so LCP content does not
+// wait for the network. Pages await sessionReady before user-specific API
+// calls (favorites, account data).
+const sessionReady = api("/auth/session")
+  .then((session) => {
+    Object.assign(state, session);
+    header();
+  })
+  .catch(() => {
+    /* Рендерим страницу даже без сессии */
+  });
 function header() {
-  document.querySelector("#header").innerHTML =
-    `<div class="container header-inner"><a class="logo" href="/" aria-label="Место Бизнес: главная">место<span>БИЗНЕС</span></a><nav class="main-nav" aria-label="Основная навигация"><a href="/catalog?deal=sale">Продажа</a><a href="/catalog?deal=rent">Аренда</a><a href="/catalog">Каталог</a></nav><div class="header-actions"><a class="favorite-nav" href="/account?tab=favorites">♡ &nbsp;Избранное</a><a href="${state.user ? "/account" : "/login"}">${state.user ? "Кабинет" : "Войти"}</a><a class="button" href="/publish">Разместить объект</a></div></div>`;
+  // Header markup is static in index.html to avoid layout shift; only the
+  // auth link depends on the session.
+  if (!state.user) return;
+  const link = document.querySelector("#header [data-auth-link]");
+  if (link) {
+    link.href = "/account";
+    link.textContent = "Кабинет";
+  }
 }
 const options = { "": "Все назначения", ...categories };
 
@@ -47,7 +62,9 @@ function ensureSubModal() {
   document.body.appendChild(overlay);
 
   overlay.querySelector(".modal-close").onclick = closeSubModal;
-  overlay.onclick = (e) => { if (e.target === overlay) closeSubModal(); };
+  overlay.onclick = (e) => {
+    if (e.target === overlay) closeSubModal();
+  };
 
   overlay.querySelector("#sub-modal-form").onsubmit = async (e) => {
     e.preventDefault();
@@ -106,7 +123,7 @@ async function home() {
     free_purpose: "Для вашего формата",
     commercial_land: "Для развития проекта",
   };
-  main.innerHTML = `<div class="container hero-wrap"><section class="hero"><div class="hero-content"><div class="eyebrow">Коммерческая недвижимость</div><h1>Пространство для вашего бизнеса.</h1><p>Офисы, торговые площади и объекты для логистики. Аренда и покупка напрямую у авторов объявлений.</p><a class="hero-link" href="/catalog">Открыть каталог <span aria-hidden="true">↗</span></a></div><img class="hero-image" src="/assets/hero.webp" alt="Архитектура современного делового центра" width="760" height="720" fetchpriority="high"></section><form class="search-panel" action="/catalog"><div class="deal-tabs"><label><input type="radio" name="deal" value="rent" checked>Аренда</label><label><input type="radio" name="deal" value="sale">Покупка</label></div><div class="search-row">${field("q", "Город или район", "", 'placeholder="Например, Москва"')}${select("category", "Назначение объекта", options)}${field("maxPrice", "Бюджет до, ₽", "", 'type="number" min="1" step="0.01" placeholder="Не ограничен"')}<button class="button" type="submit">Найти объект <span aria-hidden="true">↗</span></button></div></form><section class="category-section"><div class="section-heading"><h2>Под задачи вашего бизнеса</h2></div><nav class="categories" aria-label="Назначение объекта">${Object.entries(
+  main.innerHTML = `<div class="container hero-wrap"><section class="hero"><div class="hero-content"><div class="eyebrow">Коммерческая недвижимость</div><h1>Пространство для вашего бизнеса.</h1><p>Офисы, торговые площади и объекты для логистики. Аренда и покупка напрямую у авторов объявлений.</p><a class="hero-link" href="/catalog">Открыть каталог <span aria-hidden="true">↗</span></a></div><img class="hero-image" src="/assets/hero.webp" srcset="/assets/hero-800.webp 800w, /assets/hero-1200.webp 1200w, /assets/hero-1600.webp 1600w" sizes="(max-width: 800px) 100vw, 50vw" alt="Архитектура современного делового центра" width="1600" height="1067" fetchpriority="high"></section><form class="search-panel" action="/catalog"><div class="deal-tabs"><label><input type="radio" name="deal" value="rent" checked>Аренда</label><label><input type="radio" name="deal" value="sale">Покупка</label></div><div class="search-row">${field("q", "Город или район", "", 'placeholder="Например, Москва"')}${select("category", "Назначение объекта", options)}${field("maxPrice", "Бюджет до, ₽", "", 'type="number" min="1" step="0.01" placeholder="Не ограничен"')}<button class="button" type="submit">Найти объект <span aria-hidden="true">↗</span></button></div></form><section class="category-section"><div class="section-heading"><h2>Под задачи вашего бизнеса</h2></div><nav class="categories" aria-label="Назначение объекта">${Object.entries(
     categories,
   )
     .map(
@@ -123,6 +140,7 @@ async function home() {
   });
 
   try {
+    await sessionReady;
     const data = await api("/properties?sort=newest&limit=6");
     document.querySelector("#home-listings").innerHTML = data.items.length
       ? data.items.map((p) => card(p)).join("")
@@ -152,6 +170,7 @@ async function catalog() {
     q.delete("page");
     navigate("/catalog?" + q);
   };
+  await sessionReady;
   const data = await api("/properties?" + q);
   document.querySelector("#result-count").textContent =
     `Найдено объявлений: ${data.total}`;
@@ -185,6 +204,7 @@ async function catalog() {
 }
 async function detail(id) {
   const requestedPath = location.pathname;
+  await sessionReady;
   const {
     property: p,
     owner,
@@ -195,6 +215,7 @@ async function detail(id) {
   document.title = p.title + " | Место Бизнес";
   main.innerHTML = `<div class="container page"><div class="breadcrumb"><a href="/">Главная</a> / <a href="/catalog">Каталог</a> / ${esc(p.city)}</div><h1>${esc(p.title)}</h1><p class="muted detail-address">${esc(p.city)}, ${esc(p.district ? p.district + ", " : "")}${esc(p.address)}</p><div class="detail-layout"><div><img class="gallery-main" src="${safeImage(images[0]?.url)}" alt="${esc(p.title)}" width="900" height="620">${images.length > 1 ? `<div class="thumbnails" aria-label="Фотографии">${images.map((im, i) => `<button class="${i === 0 ? "selected" : ""}" data-photo="${safeImage(im.url)}" aria-label="Фото ${i + 1}"><img src="${safeImage(im.url)}" alt="Фото ${i + 1}" width="100" height="72"></button>`).join("")}</div>` : ""}<div class="detail-facts">${propertyFacts(p)}</div><h2>Об объекте</h2><p class="description">${esc(p.description)}</p><div id="room-model-host" hidden></div></div><aside class="contact-panel"><div class="detail-price">${money(p.price)}${p.deal === "rent" ? '<span class="muted"> / месяц</span>' : ""}</div><p class="muted">${rate(p)}</p><p class="muted">${p.tax && p.tax !== "unspecified" ? taxLabels[p.tax] : "НДС: не указан"}</p>${p.status !== "published" ? `<p class="muted">${p.status === "draft" ? "Черновик" : "Объявление в архиве"}</p>` : ""}<button id="reveal" class="button">Показать телефон</button><button class="button secondary" id="detail-favorite">${p.isFavorite ? "Убрать из избранного" : "♡ Сохранить в избранное"}</button><div class="owner">${owner.avatar ? `<img class="avatar" src="${safeImage(owner.avatar)}" alt="${esc(owner.name)}">` : `<span class="avatar">${esc(owner.name?.[0] || "М")}</span>`}<div><strong>${esc(owner.company || owner.name)}</strong><p>${esc(businessRoles[owner.businessRole] || "Собственник")}</p>${owner.company || (p.contactName && p.contactName !== owner.name) ? `<p>${esc(p.contactName || owner.name)}</p>` : ""}</div></div>${owner.bio ? `<p class="muted owner-bio">${esc(owner.bio)}</p>` : ""}<a class="button secondary" href="/catalog?owner=${encodeURIComponent(owner.id)}">Объявления автора ↗</a>${state.user?.id === p.ownerId ? `<a class="button secondary" href="/edit/${encodeURIComponent(p.id)}">Редактировать</a>` : ""}</aside></div>${otherProperties?.length ? `<section class="detail-more"><div class="section-heading"><h2>Другие объявления автора</h2></div><div class="grid">${otherProperties.map((item) => card(item)).join("")}</div></section>` : ""}</div>`;
   if (p.category !== "commercial_land") {
+    const { mountRoomModel } = await import("./room-model.js");
     mountRoomModel(
       document.querySelector("#room-model-host"),
       id,
@@ -283,19 +304,24 @@ document.addEventListener("click", (event) => {
   navigate(destination.href);
 });
 try {
-  const session = await api("/auth/session");
-  Object.assign(state, session);
-  header();
   const path = location.pathname.replace(/\/$/, "") || "/";
   if (path === "/") await home();
   else if (path === "/catalog") await catalog();
   else if (/^\/property\/[^/]+$/.test(path)) await detail(path.split("/")[2]);
-  else if (path === "/login" || path === "/register") authPage(path.slice(1));
-  else if (path === "/account") await accountPage();
-  else if (path === "/publish" || /^\/edit\/[^/]+$/.test(path))
+  else if (path === "/login" || path === "/register") {
+    const { authPage } = await import("./forms.js");
+    authPage(path.slice(1));
+  } else if (path === "/account") {
+    await sessionReady;
+    const { accountPage } = await import("./forms.js");
+    await accountPage();
+  } else if (path === "/publish" || /^\/edit\/[^/]+$/.test(path)) {
+    await sessionReady;
+    const { editorPage } = await import("./forms.js");
     await editorPage(path.startsWith("/edit/") ? path.split("/")[2] : null);
-  else
+  } else
     main.innerHTML = `<div class="container page">${empty("Страница не найдена", "Вернитесь в каталог коммерческой недвижимости.")}</div>`;
+  await sessionReady;
 } catch (error) {
   header();
   main.innerHTML = `<div class="container page"><div class="error-panel"><h1>Не удалось открыть страницу</h1><p>${esc(error.message)}</p><a class="button" href="${esc(location.pathname + location.search)}">Попробовать ещё раз</a> <a class="button secondary" href="/catalog">В каталог</a></div></div>`;

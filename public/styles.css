@@ -248,6 +248,12 @@ body {
 body.is-leaving {
   animation: 130ms ease-in both page-exit;
 }
+/* Reserve the viewport height while the app renders, so the footer and
+   content below never shift visibly when the loading placeholder is
+   replaced (keeps CLS near zero). */
+#main {
+  min-height: 100vh;
+}
 a {
   color: inherit;
   text-decoration: none;
@@ -446,9 +452,11 @@ button.primary:hover {
   margin-top: 24px;
 }
 .hero-image {
+  display: block;
   width: 100%;
   height: 100%;
   min-height: 450px;
+  object-fit: cover;
 }
 .hero-link {
   display: inline-flex;
@@ -843,6 +851,12 @@ button.primary:hover {
   padding: 65px 24px;
   color: var(--muted);
   grid-column: 1/-1;
+}
+/* Reserve roughly two rows of cards while listings load, so sections
+   below do not jump when results arrive. */
+#home-listings:has(> .loading),
+#results:has(> .loading) {
+  min-height: 860px;
 }
 .empty h2 {
   margin-top: 16px;
@@ -1791,7 +1805,9 @@ footer {
   padding: 32px 28px;
   display: flex;
   flex-direction: column;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 .pricing-card:hover {
   border-color: #9fb6e4;
@@ -1925,7 +1941,13 @@ footer {
   }
 }
 @media (max-width: 540px) {
-  .pricing-section { margin: 48px 0; }
-  .modal-dialog { padding: 28px 20px; }
-  .modal-header h2 { font-size: 22px; }
+  .pricing-section {
+    margin: 48px 0;
+  }
+  .modal-dialog {
+    padding: 28px 20px;
+  }
+  .modal-header h2 {
+    font-size: 22px;
+  }
 }
