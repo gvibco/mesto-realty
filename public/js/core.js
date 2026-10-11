@@ -76,20 +76,15 @@ export const statuses = {
   published: "Опубликовано",
   archived: "В архиве",
 };
-// When running inside a Vibly preview sandbox, use the real backend URL directly.
-const API_BASE =
-  typeof location !== "undefined" &&
-  location.hostname.endsWith(".vaibly.dev")
-    ? "https://477a-oc71-643k.gw-1a.dockhost.net"
-    : "";
+// Vite dev server proxies /api/* → Dockhost backend; no special base needed.
+const API_BASE = "";
 
 export async function api(path, options = {}) {
-  const onVibly = Boolean(API_BASE);
   const headers = {
     ...(options.body instanceof FormData
       ? {}
       : { "Content-Type": "application/json" }),
-    ...(!onVibly && options.method && options.method !== "GET"
+    ...(options.method && options.method !== "GET"
       ? { "X-CSRF-Token": state.csrfToken }
       : {}),
     ...options.headers,
@@ -97,7 +92,7 @@ export async function api(path, options = {}) {
   let response;
   try {
     response = await fetch(API_BASE + "/api" + path, {
-      credentials: onVibly ? "omit" : "same-origin",
+      credentials: "same-origin",
       ...options,
       headers,
       body:
