@@ -17,6 +17,8 @@ import {
   toast,
   authRequired,
   navigate,
+  errors,
+  busy,
 } from "./core.js";
 import { authPage, accountPage, editorPage } from "./forms.js";
 import { initAssistant } from "./assistant.js";
@@ -28,6 +30,73 @@ function header() {
     `<div class="container header-inner"><a class="logo" href="/" aria-label="Место Бизнес: главная">место<span>БИЗНЕС</span></a><nav class="main-nav" aria-label="Основная навигация"><a href="/catalog?deal=sale">Продажа</a><a href="/catalog?deal=rent">Аренда</a><a href="/catalog">Каталог</a></nav><div class="header-actions"><a class="favorite-nav" href="/account?tab=favorites">♡ &nbsp;Избранное</a><a href="${state.user ? "/account" : "/login"}">${state.user ? "Кабинет" : "Войти"}</a><a class="button" href="/publish">Разместить объект</a></div></div>`;
 }
 const options = { "": "Все назначения", ...categories };
+
+/* ── Subscription modal ── */
+let subModal = null;
+
+function ensureSubModal() {
+  if (subModal) return subModal;
+  const overlay = document.createElement("div");
+  overlay.id = "sub-modal";
+  overlay.className = "modal-overlay";
+  overlay.setAttribute("hidden", "");
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-labelledby", "sub-modal-title");
+  overlay.innerHTML = `<div class="modal-dialog"><div class="modal-header"><h2 id="sub-modal-title">Оставить заявку</h2><button class="modal-close" aria-label="Закрыть">×</button></div><p class="modal-tariff-label" id="sub-modal-tariff-label"></p><form id="sub-modal-form" class="stack"><input type="hidden" name="tariff" value="">${field("name", "Имя", "", 'required minlength="2" maxlength="80" autocomplete="name"')}${field("phone", "Телефон", "", 'type="tel" required maxlength="30" autocomplete="tel" placeholder="+7 900 000-00-00"')}${field("email", "Email", "", 'type="email" required maxlength="254" autocomplete="email"')}<div class="form-error" tabindex="-1" role="alert"></div><button class="button" type="submit">Отправить</button></form><p class="modal-success" hidden>Спасибо! Мы свяжемся с вами в ближайшее время.</p></div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector(".modal-close").onclick = closeSubModal;
+  overlay.onclick = (e) => { if (e.target === overlay) closeSubModal(); };
+
+  overlay.querySelector("#sub-modal-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const values = Object.fromEntries(new FormData(form));
+    busy(form, true);
+    try {
+      await api("/subscriptions", { method: "POST", body: values });
+      form.hidden = true;
+      overlay.querySelector(".modal-success").removeAttribute("hidden");
+      setTimeout(closeSubModal, 3500);
+    } catch (err) {
+      errors(form, err);
+      busy(form, false);
+    }
+  };
+
+  subModal = overlay;
+  return overlay;
+}
+
+function openSubModal(tariff) {
+  const modal = ensureSubModal();
+  const form = modal.querySelector("#sub-modal-form");
+  form.reset();
+  form.removeAttribute("hidden");
+  busy(form, false);
+  modal.querySelector(".form-error").textContent = "";
+  modal.querySelector(".modal-success").setAttribute("hidden", "");
+  form.querySelector('[name="tariff"]').value = tariff;
+  modal.querySelector("#sub-modal-tariff-label").textContent =
+    "Тариф: " + tariff;
+  modal.removeAttribute("hidden");
+  document.body.style.overflow = "hidden";
+  form.querySelector("input:not([type='hidden'])").focus();
+}
+
+function closeSubModal() {
+  if (!subModal) return;
+  subModal.setAttribute("hidden", "");
+  document.body.style.overflow = "";
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && subModal && !subModal.hasAttribute("hidden"))
+    closeSubModal();
+});
+
+/* ── Pages ── */
 async function home() {
   const purpose = {
     office: "Для команды и встреч",
@@ -46,7 +115,13 @@ async function home() {
     )
     .join(
       "",
-    )}</nav></section><section class="listing-section"><div class="section-heading"><div><h2>Новые объекты</h2><p>Свежие предложения коммерческой недвижимости</p></div><a href="/catalog">Весь каталог ↗</a></div><div id="home-listings" class="grid"><div class="loading">Загружаем объекты…</div></div></section><section class="city-section"><div class="section-heading"><div><h2>Где будет работать ваш бизнес?</h2><p>Посмотрите предложения в интересующем городе</p></div></div><div class="city-grid">${["Москва", "Санкт-Петербург", "Казань", "Сочи"].map((city) => `<a class="city-link" href="/catalog?q=${encodeURIComponent(city)}">${city}<span aria-hidden="true">↗</span></a>`).join("")}</div></section><section class="publish-banner"><div><span class="banner-label">Собственникам и брокерам</span><h2>Ваш объект. Следующий бизнес.</h2><p>Добавьте параметры, условия сделки и фотографии.<br>Получайте обращения от заинтересованных компаний.</p></div><a class="button" href="/publish">Разместить объект ↗</a></section></div>`;
+    )}</nav></section><section class="listing-section"><div class="section-heading"><div><h2>Новые объекты</h2><p>Свежие предложения коммерческой недвижимости</p></div><a href="/catalog">Весь каталог ↗</a></div><div id="home-listings" class="grid"><div class="loading">Загружаем объекты…</div></div></section><section class="city-section"><div class="section-heading"><div><h2>Где будет работать ваш бизнес?</h2><p>Посмотрите предложения в интересующем городе</p></div></div><div class="city-grid">${["Москва", "Санкт-Петербург", "Казань", "Сочи"].map((city) => `<a class="city-link" href="/catalog?q=${encodeURIComponent(city)}">${city}<span aria-hidden="true">↗</span></a>`).join("")}</div></section><section class="pricing-section"><div class="section-heading"><div><h2>Тарифы</h2><p>Выберите подходящий план для вашего бизнеса</p></div></div><div class="pricing-grid"><div class="pricing-card"><div class="pricing-name">Базовый</div><div class="pricing-price">Бесплатно</div><ul class="pricing-features"><li>Размещение объявлений без продвижения</li><li>Базовый поиск по объектам</li></ul><button class="button secondary sub-request" data-tariff="Базовый">Оставить заявку</button></div><div class="pricing-card featured"><span class="pricing-badge">Популярный</span><div class="pricing-name">Бизнес</div><div class="pricing-price">По запросу</div><ul class="pricing-features"><li>Продвижение объявлений в топ выдачи</li><li>Приоритетное размещение в категории</li><li>ИИ-агент: автоподбор объектов под запрос, краткий анализ объекта</li></ul><button class="button sub-request" data-tariff="Бизнес">Оставить заявку</button></div><div class="pricing-card"><div class="pricing-name">Премиум</div><div class="pricing-price">По запросу</div><ul class="pricing-features"><li>Максимальное продвижение (Featured / закреплённые позиции)</li><li>ИИ-агент: подбор, анализ рынка, сравнение предложений, генерация описания</li><li>Персональный менеджер</li></ul><button class="button secondary sub-request" data-tariff="Премиум">Оставить заявку</button></div></div></section><section class="publish-banner"><div><span class="banner-label">Собственникам и брокерам</span><h2>Ваш объект. Следующий бизнес.</h2><p>Добавьте параметры, условия сделки и фотографии.<br>Получайте обращения от заинтересованных компаний.</p></div><a class="button" href="/publish">Разместить объект ↗</a></section></div>`;
+
+  // Wire pricing buttons → modal
+  main.querySelectorAll(".sub-request").forEach((btn) => {
+    btn.onclick = () => openSubModal(btn.dataset.tariff);
+  });
+
   try {
     const data = await api("/properties?sort=newest&limit=6");
     document.querySelector("#home-listings").innerHTML = data.items.length
