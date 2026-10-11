@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { rateLimit } from "express-rate-limit";
 import { pool } from "./db.js";
 
 const VALID_TARIFFS = new Set(["Базовый", "Бизнес", "Премиум"]);
@@ -6,7 +7,17 @@ const VALID_TARIFFS = new Set(["Базовый", "Бизнес", "Премиум
 export function subscriptionsRouter() {
   const router = Router();
 
-  router.post("/subscriptions", async (req, res) => {
+  const limiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 5,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Слишком много заявок. Попробуйте через минуту.",
+    },
+  });
+
+  router.post("/subscriptions", limiter, async (req, res) => {
     const { name, phone, email, tariff } = req.body ?? {};
 
     if (
