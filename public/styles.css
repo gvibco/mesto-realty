@@ -572,6 +572,11 @@ button.primary:hover {
   padding-block: 12px;
   min-height: 44px;
 }
+/* Without this the rule above would paint the label blue on the blue
+   button background. */
+.section-heading > a.button {
+  color: white;
+}
 .categories {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

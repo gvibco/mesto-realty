@@ -123,6 +123,7 @@ export function toast(message) {
   toast.timer = setTimeout(() => el.classList.remove("show"), 4500);
 }
 let navigationTimer;
+let restoreTimer;
 export function navigate(url) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
     location.assign(url);
@@ -130,7 +131,25 @@ export function navigate(url) {
   }
   document.body.classList.add("is-leaving");
   clearTimeout(navigationTimer);
+  clearTimeout(restoreTimer);
   navigationTimer = setTimeout(() => location.assign(url), 130);
+  // If the navigation never commits (e.g. the user presses Back while the new
+  // page is still loading), this document survives with the exit animation
+  // frozen at opacity 0 — bring it back.
+  restoreTimer = setTimeout(
+    () => document.body.classList.remove("is-leaving"),
+    1500,
+  );
+}
+// A back/forward-cache restore re-shows the page exactly as it was frozen:
+// with the finished exit animation the body would stay invisible (white
+// screen), and a pending navigation would fire again.
+if (typeof window !== "undefined") {
+  window.addEventListener("pageshow", () => {
+    clearTimeout(navigationTimer);
+    clearTimeout(restoreTimer);
+    document.body.classList.remove("is-leaving");
+  });
 }
 export function authRequired() {
   if (state.user) return true;

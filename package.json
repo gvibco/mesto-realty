@@ -12,7 +12,7 @@
     "start": "npm run db:migrate && node server/index.js",
     "db:migrate": "node server/migrate.js",
     "db:seed": "node scripts/seed.js",
-    "test": "node --test tests/validation.test.js tests/ui-security.test.js tests/assistant.test.js tests/catalog-assistant.test.js tests/seed-media.test.js tests/room-model-ui.test.js tests/room-models.test.js tests/architectural-geometry.test.js tests/architectural-schema.test.js tests/architectural-analysis.test.js",
+    "test": "node --test tests/validation.test.js tests/ui-security.test.js tests/navigation-ui.test.js tests/assistant.test.js tests/catalog-assistant.test.js tests/seed-media.test.js tests/room-model-ui.test.js tests/room-models.test.js tests/architectural-geometry.test.js tests/architectural-schema.test.js tests/architectural-analysis.test.js",
     "test:api": "node --test --test-concurrency=1 tests/migration.test.js tests/api.test.js tests/production.test.js tests/seed-recovery.test.js tests/room-models-api.test.js tests/architectural-api.test.js",
     "test:browser": "node --test tests/browser.test.js",
     "format:check": "prettier --check public server scripts tests",
