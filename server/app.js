@@ -107,7 +107,16 @@ export function createApp({ assistant, architecture } = {}) {
   );
   app.use(express.json({ limit: "100kb", strict: true }));
   app.use("/internal/room-models", roomModelWorkerRouter());
+  // Allow Vibly preview sandbox to read public GET endpoints without CSRF
+  const VAIBLY_ORIGIN_RE = /^https:\/\/[\w-]+\.vaibly\.dev$/;
   app.use("/api", (req, res, next) => {
+    const origin = req.get("origin") || "";
+    if (VAIBLY_ORIGIN_RE.test(origin)) {
+      res.set("Access-Control-Allow-Origin", origin);
+      res.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.set("Access-Control-Allow-Headers", "Content-Type");
+      if (req.method === "OPTIONS") return res.status(204).end();
+    }
     res.set("Cache-Control", "no-store");
     next();
   });
