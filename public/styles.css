@@ -461,15 +461,25 @@ button.primary:hover {
 .hero-link {
   display: inline-flex;
   align-items: center;
-  gap: 28px;
+  gap: 0.3em;
   min-height: 44px;
   margin-top: 20px;
   color: var(--blue);
   font-weight: 700;
   font-size: 13px;
 }
-.hero-link span {
-  font-size: 22px;
+.arrow-link::after {
+  content: "↗";
+  display: inline-block;
+  margin-left: 0.45em;
+  font-size: 0.95em;
+  line-height: 1;
+  vertical-align: middle;
+  color: var(--blue);
+  transition: transform 0.2s ease;
+}
+.arrow-link:hover::after {
+  transform: translate(2px, -2px);
 }
 .search-panel {
   position: relative;
@@ -588,7 +598,7 @@ button.primary:hover {
 }
 .category-link {
   position: relative;
-  padding: 25px 50px 25px 24px;
+  padding: 25px 24px;
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -1568,7 +1578,7 @@ footer {
     padding-top: 0;
   }
   .category-link {
-    padding: 21px 30px 21px 15px;
+    padding: 21px 15px;
     min-height: 120px;
   }
   .category-link strong {
@@ -1578,10 +1588,8 @@ footer {
     font-size: 11px;
     line-height: 1.5;
   }
-  .category-arrow {
-    right: 11px;
-    top: 17px;
-    font-size: 18px;
+  .arrow-link::after {
+    font-size: 0.85em;
   }
   .grid,
   .catalog-content .grid {
@@ -1810,17 +1818,38 @@ footer {
   padding: 32px 28px;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
   transition:
     border-color 0.2s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    transform 0.2s;
 }
 .pricing-card:hover {
   border-color: #9fb6e4;
   box-shadow: 0 8px 24px #172b4309;
 }
+.pricing-card.selected {
+  border-color: var(--blue);
+  box-shadow: 0 12px 36px #235ee826;
+  transform: translateY(-4px);
+}
 .pricing-card.featured {
   border-color: var(--blue);
   box-shadow: 0 8px 32px #235ee81a;
+}
+.pricing-card.featured.selected {
+  animation: selectPulse 0.5s ease;
+}
+@keyframes selectPulse {
+  0% {
+    transform: translateY(-4px) scale(1);
+  }
+  40% {
+    transform: translateY(-6px) scale(1.02);
+  }
+  100% {
+    transform: translateY(-4px) scale(1);
+  }
 }
 .pricing-card.featured:hover {
   box-shadow: 0 10px 40px #235ee826;
