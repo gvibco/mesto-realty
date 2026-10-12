@@ -469,17 +469,24 @@ button.primary:hover {
   font-size: 13px;
 }
 .arrow-link::after {
-  content: "↗";
+  content: "";
   display: inline-block;
-  margin-left: 0.45em;
-  font-size: 0.95em;
-  line-height: 1;
+  width: 0.45em;
+  height: 0.45em;
+  border-top: 0.12em solid currentColor;
+  border-right: 0.12em solid currentColor;
+  transform: rotate(45deg);
+  margin-left: 0.35em;
   vertical-align: middle;
-  color: var(--blue);
   transition: transform 0.2s ease;
 }
 .arrow-link:hover::after {
-  transform: translate(2px, -2px);
+  transform: rotate(45deg) translate(2px, -2px);
+}
+.category-link.arrow-link::after,
+.city-link.arrow-link::after,
+.footer-inner .arrow-link::after {
+  border-color: var(--blue);
 }
 .search-panel {
   position: relative;
@@ -619,13 +626,6 @@ button.primary:hover {
   color: var(--muted);
   margin-top: 5px;
 }
-.category-arrow {
-  position: absolute;
-  right: 22px;
-  top: 24px;
-  color: var(--blue);
-  font-size: 22px;
-}
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -744,9 +744,6 @@ button.primary:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-.city-link span {
-  color: var(--blue);
 }
 .city-link:hover {
   color: var(--blue);
@@ -1828,31 +1825,45 @@ footer {
   border-color: #9fb6e4;
   box-shadow: 0 8px 24px #172b4309;
 }
-.pricing-card.selected {
-  border-color: var(--blue);
-  box-shadow: 0 12px 36px #235ee826;
-  transform: translateY(-4px);
-}
 .pricing-card.featured {
   border-color: var(--blue);
   box-shadow: 0 8px 32px #235ee81a;
 }
-.pricing-card.featured.selected {
-  animation: selectPulse 0.5s ease;
+.pricing-card.featured:hover {
+  box-shadow: 0 10px 40px #235ee826;
+}
+.pricing-card.selected {
+  border-color: var(--blue);
+  box-shadow: 0 12px 36px #235ee826;
+  transform: translateY(-4px) scale(1.02);
+}
+.pricing-card.premium-selected {
+  animation: premiumToCenter 0.6s ease;
 }
 @keyframes selectPulse {
   0% {
-    transform: translateY(-4px) scale(1);
+    transform: translateY(-4px) scale(1.02);
   }
   40% {
-    transform: translateY(-6px) scale(1.02);
+    transform: translateY(-6px) scale(1.04);
   }
   100% {
-    transform: translateY(-4px) scale(1);
+    transform: translateY(-4px) scale(1.02);
   }
 }
-.pricing-card.featured:hover {
-  box-shadow: 0 10px 40px #235ee826;
+.pricing-card.featured.selected {
+  animation: selectPulse 0.5s ease;
+}
+@keyframes premiumToCenter {
+  0% {
+    transform: translateY(-4px) scale(1.02);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.05);
+  }
+  100% {
+    transform: translateY(-4px) scale(1.02);
+  }
 }
 .pricing-badge {
   display: inline-flex;
