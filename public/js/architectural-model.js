@@ -12,8 +12,7 @@ export function architecturalMarkup(model, owner = false, propertyId = "") {
   if (!owner) return "";
   const messages = {
     queued: "Планировка добавлена в очередь. Модель появится после обработки.",
-    processing:
-      "Создаём архитектурную модель по плану, фотографиям и размерам.",
+    processing: "Создаём архитектурную модель по плану и размерам помещения.",
     needs_inputs:
       "Добавьте план, ширину, глубину и высоту помещения для 3D-планировки.",
     needs_photos:
@@ -22,7 +21,7 @@ export function architecturalMarkup(model, owner = false, propertyId = "") {
       "Автоматическое создание модели пока недоступно. План и фотографии сохранены.",
     failed:
       "Не удалось создать планировку. Проверьте план и размеры, затем сохраните изменения.",
-    none: "Добавьте план, размеры и фотографии: 3D-планировка создаётся автоматически.",
+    none: "Добавьте план и размеры помещения: 3D-планировка создаётся автоматически.",
   };
   return `<section class="room-model room-model-status architectural-model"><h2>Планировка в 3D</h2><p role="status">${esc(messages[model.state] || messages.none)}</p><a class="room-edit-link" href="/edit/${encodeURIComponent(propertyId)}">План и размеры помещения</a></section>`;
 }

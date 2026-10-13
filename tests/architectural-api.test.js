@@ -22,7 +22,8 @@ const { pool } = await import("../server/db.js");
 const { migrate } = await import("../server/migrate.js");
 let analyses = 0,
   analysisGate,
-  analysisStarted;
+  analysisStarted,
+  lastPhotos;
 const scene = {
   version: 1,
   width: 6,
@@ -49,7 +50,8 @@ const scene = {
 };
 const instance = createApp({
     architecture: {
-      analyze: async () => {
+      analyze: async ({ photos }) => {
+        lastPhotos = photos;
         analyses++;
         analysisStarted?.();
         if (analysisGate) await analysisGate;
@@ -121,6 +123,18 @@ test("plan and dimension inputs trigger automatic architecture, stale leases fai
   await auth("post", base + "/plan")
     .attach("plan", png, { filename: "plan.png", contentType: "image/png" })
     .expect(200);
+  assert.equal(
+    (await owner.get(base)).body.model.state,
+    "queued",
+    "plan and dimensions without photos must queue the model",
+  );
+  const planOnly = (await worker("/claim").send({}).expect(200)).body.job;
+  assert.deepEqual(planOnly.images, []);
+  await worker("/" + propertyId + "/analyze")
+    .send(planOnly)
+    .expect(200);
+  assert.deepEqual(lastPhotos, []);
+  assert.equal((await owner.get(base)).body.model.state, "ready");
   const planUrl = (await owner.get(base)).body.inputs.planUrl;
   await request(app).get(planUrl).expect(404);
   await owner.get(planUrl).expect(200);
@@ -147,7 +161,7 @@ test("plan and dimension inputs trigger automatic architecture, stale leases fai
   await worker("/" + propertyId + "/analyze")
     .send(job)
     .expect(200);
-  assert.equal(analyses, 1);
+  assert.equal(analyses, 2);
   const model = (await owner.get(base)).body.model;
   assert.equal(model.state, "ready");
   assert.match(model.url, /scene\.json$/);

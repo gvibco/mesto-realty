@@ -45,7 +45,6 @@ export async function queueArchitecturalModel(client, propertyId) {
   ).rows.map((row) => row.id);
   const ready =
     p?.category !== "commercial_land" &&
-    images.length > 0 &&
     input?.plan_filename &&
     input.width &&
     input.depth &&

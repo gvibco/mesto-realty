@@ -69,6 +69,17 @@ class GroundingTests(unittest.TestCase):
         raw={'building':[100,100,900,900],'walls':[{'start':points[i],'end':points[(i+1)%3],'exterior':True} for i in range(3)],'windows':[],'doors':[],'furniture':[]}
         with self.assertRaises(ValueError):grounded_scene(raw,{'width':8,'depth':6,'height':3},base64.b64encode(out.getvalue()).decode())
 
+    def test_light_gray_plan_strokes_are_supported(self):
+        image=Image.new('RGB',(1000,760),(255,255,255));d=ImageDraw.Draw(image)
+        d.rectangle([120,120,840,600],fill=(236,236,236))
+        d.line([(120,120),(840,120),(840,600),(120,600),(120,120)],fill=(170,170,170),width=14)
+        d.line([(325,120),(505,120)],fill=(236,236,236),width=16)
+        d.line([(120,455),(120,565)],fill=(236,236,236),width=16)
+        out=io.BytesIO();image.save(out,format='PNG')
+        raw={'building':[110,144,847,797],'walls':[{'start':[110,144],'end':[110,797],'exterior':True},{'start':[110,797],'end':[847,797],'exterior':True},{'start':[847,144],'end':[847,797],'exterior':True},{'start':[110,144],'end':[847,144],'exterior':True}],'windows':[{'box':[310,144,500,170]}],'doors':[{'box':[110,580,230,797]}],'furniture':[]}
+        s=grounded_scene(raw,{'width':6,'depth':4,'height':3},base64.b64encode(out.getvalue()).decode())
+        self.assertEqual(len(s['walls']),4);self.assertEqual(len(s['openings']),2)
+
     def test_opening_observation_must_touch_the_wall_it_describes(self):
         raw,image=self.fixture();raw['windows']=[{'box':[350,300,450,400]}]
         with self.assertRaises(ValueError):grounded_scene(raw,{'width':6,'depth':4,'height':3},image)

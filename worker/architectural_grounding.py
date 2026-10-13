@@ -41,7 +41,23 @@ def grounded_scene(raw,dimensions,encoded_plan):
     with Image.open(io.BytesIO(data)) as image:
         if image.width*image.height>4_000_000:raise ValueError('Image too large')
         pixels=np.asarray(image.convert('RGB'))
-    h,w=pixels.shape[:2];scale=np.array([w/1000,h/1000]);dark=pixels.max(axis=2)<100
+    h,w=pixels.shape[:2];scale=np.array([w/1000,h/1000])
+    # Plans range from black-on-white to light grey strokes; pick the stroke
+    # threshold per image (Otsu), clamped so shading never counts as a stroke.
+    gray=pixels.max(axis=2)
+    hist=np.bincount(gray.ravel(),minlength=256).astype(np.float64)
+    total=gray.size;sum_total=float((hist*np.arange(256)).sum())
+    sum_b=0.0;w_b=0.0;best=-1.0;threshold=128
+    for t in range(256):
+        w_b+=hist[t]
+        if w_b<=0:continue
+        w_f=total-w_b
+        if w_f<=0:break
+        sum_b+=t*hist[t]
+        m_b=sum_b/w_b;m_f=(sum_total-sum_b)/w_f
+        between=w_b*w_f*(m_b-m_f)**2
+        if between>best:best=between;threshold=t
+    dark=gray<=min(210,max(80,threshold))
     tolerance=max(3,min((bounds[2]-bounds[0])*scale[0],(bounds[3]-bounds[1])*scale[1])*.04)
     observations=[]
     for row in raw['walls']:

@@ -89,7 +89,6 @@ export async function analyzeFloorPlan(
   const images = [plan, ...photos.slice(0, 6)];
   if (
     !plan ||
-    photos.length < 1 ||
     images.some(
       (x) =>
         !["image/jpeg", "image/png", "image/webp"].includes(x.mime) ||

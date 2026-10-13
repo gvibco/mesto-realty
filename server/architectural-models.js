@@ -512,8 +512,7 @@ export function architecturalWorkerRouter({ analyze = analyzeFloorPlan } = {}) {
           ).rows;
           if (
             !planPattern.test(row.plan_filename) ||
-            images.length !== row.image_ids.length ||
-            !images.length
+            images.length !== row.image_ids.length
           )
             throw error("Исходные данные изменились", 422, "invalid_layout");
           async function image(directory, filename, size) {
