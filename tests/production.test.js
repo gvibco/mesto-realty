@@ -54,3 +54,17 @@ test("authentication attempts are rate limited", async () => {
     .expect(429);
   assert.ok(limited.headers["retry-after"]);
 });
+test("entry assets revalidate on every load so deploys take effect", async () => {
+  for (const path of ["/styles.css", "/js/app.js"]) {
+    const res = await request(instance.app)
+      .get(path)
+      .set("X-Forwarded-Proto", "https")
+      .expect(200);
+    assert.match(res.headers["cache-control"], /no-cache/);
+  }
+  const asset = await request(instance.app)
+    .get("/assets/favicon.svg")
+    .set("X-Forwarded-Proto", "https")
+    .expect(200);
+  assert.match(asset.headers["cache-control"], /max-age=3600/);
+});

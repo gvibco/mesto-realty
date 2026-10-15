@@ -74,6 +74,12 @@ export function createApp({ assistant, architecture } = {}) {
       index: false,
       dotfiles: "deny",
       maxAge: config.production ? "1h" : 0,
+      setHeaders(res, filePath) {
+        // HTML/JS/CSS are linked without fingerprints: force revalidation
+        // so a deploy reaches browsers immediately (304 via ETag when unchanged).
+        if (/\.(html|css|js)$/.test(filePath))
+          res.setHeader("Cache-Control", "no-cache");
+      },
     }),
   );
   const PgStore = connectPgSimple(session);
