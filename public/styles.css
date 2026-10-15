@@ -488,6 +488,12 @@ button.primary:hover {
 .footer-inner .arrow-link::after {
   border-color: var(--blue);
 }
+.category-link.arrow-link::after {
+  position: absolute;
+  right: 24px;
+  bottom: 25px;
+  margin-left: 0;
+}
 .search-panel {
   position: relative;
   margin: -32px 24px 0;
@@ -1578,6 +1584,10 @@ footer {
     padding: 21px 15px;
     min-height: 120px;
   }
+  .category-link.arrow-link::after {
+    right: 15px;
+    bottom: 21px;
+  }
   .category-link strong {
     font-size: 14px;
   }
@@ -1825,20 +1835,11 @@ footer {
   border-color: #9fb6e4;
   box-shadow: 0 8px 24px #172b4309;
 }
-.pricing-card.featured {
-  border-color: var(--blue);
-  box-shadow: 0 8px 32px #235ee81a;
-}
-.pricing-card.featured:hover {
-  box-shadow: 0 10px 40px #235ee826;
-}
 .pricing-card.selected {
   border-color: var(--blue);
   box-shadow: 0 12px 36px #235ee826;
   transform: translateY(-4px) scale(1.02);
-}
-.pricing-card.premium-selected {
-  animation: premiumToCenter 0.6s ease;
+  animation: selectPulse 0.5s ease;
 }
 @keyframes selectPulse {
   0% {
@@ -1846,20 +1847,6 @@ footer {
   }
   40% {
     transform: translateY(-6px) scale(1.04);
-  }
-  100% {
-    transform: translateY(-4px) scale(1.02);
-  }
-}
-.pricing-card.featured.selected {
-  animation: selectPulse 0.5s ease;
-}
-@keyframes premiumToCenter {
-  0% {
-    transform: translateY(-4px) scale(1.02);
-  }
-  50% {
-    transform: translateY(-10px) scale(1.05);
   }
   100% {
     transform: translateY(-4px) scale(1.02);
@@ -1891,6 +1878,12 @@ footer {
   letter-spacing: -0.05em;
   color: var(--blue);
   margin-bottom: 26px;
+}
+.pricing-price small {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
 }
 .pricing-features {
   list-style: none;
