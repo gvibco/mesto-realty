@@ -173,3 +173,97 @@ test("admin sees and edits a foreign draft via existing endpoints", async () => 
     await pool.query("DELETE FROM users WHERE id=$1", [r.body.user.id]);
   }
 });
+
+test("admin API is closed to non-admins", async () => {
+  for (const path of [
+    "/api/admin/stats",
+    "/api/admin/properties",
+    "/api/admin/users",
+    "/api/admin/content",
+  ]) {
+    assert.equal((await request(app).get(path)).status, 401);
+    assert.equal((await user.get(path)).status, 403);
+  }
+  const patch = await user
+    .patch(`/api/admin/users/${userId}`)
+    .set("X-CSRF-Token", userToken)
+    .send({ blocked: true });
+  assert.equal(patch.status, 403);
+});
+
+test("admin dashboard, listings and user management", async () => {
+  const stats = await admin.get("/api/admin/stats").expect(200);
+  assert.ok(stats.body.users >= 2);
+  assert.ok(stats.body.properties >= 1);
+  assert.ok(stats.body.drafts >= 1);
+
+  const list = await admin
+    .get("/api/admin/properties?status=draft&limit=48")
+    .expect(200);
+  const item = list.body.items.find((p) => p.id === draftId);
+  assert.ok(item, "черновик пользователя виден админу");
+  assert.equal(item.ownerEmail, userEmail);
+
+  const users = await admin.get("/api/admin/users").expect(200);
+  const u = users.body.items.find((x) => x.id === userId);
+  assert.ok(u);
+  assert.equal(u.blocked, false);
+  assert.ok(u.propertyCount >= 1);
+
+  const adminId = (
+    await pool.query("SELECT id FROM users WHERE email=$1", [ADMIN_EMAIL])
+  ).rows[0].id;
+  const self = await admin
+    .patch(`/api/admin/users/${adminId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ blocked: true });
+  assert.equal(self.status, 422, "самоблокировка запрещена");
+
+  const blocked = await admin
+    .patch(`/api/admin/users/${userId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ blocked: true });
+  assert.equal(blocked.status, 200);
+  assert.equal(blocked.body.blocked, true);
+  const dead = await user.get("/api/auth/session").expect(200);
+  assert.equal(dead.body.user, null, "сессия заблокированного убита");
+  userToken = dead.body.csrfToken;
+  const unblocked = await admin
+    .patch(`/api/admin/users/${userId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ blocked: false });
+  assert.equal(unblocked.status, 200);
+});
+
+test("content: public defaults, admin edit, validation", async () => {
+  const pub = await request(app).get("/api/content").expect(200);
+  assert.match(pub.body.heroTitle, /48 часов/);
+  assert.match(pub.body.commissionText, /1%/);
+
+  const before = { ...pub.body };
+  const updated = await admin
+    .put("/api/admin/content")
+    .set("X-CSRF-Token", adminToken)
+    .send({
+      heroTitle: "Новый заголовок главной",
+      heroText: "Новый подзаголовок главной страницы.",
+      commissionTitle: "Новое название блока",
+      commissionText: "Новый текст блока про комиссию сервиса.",
+    })
+    .expect(200);
+  assert.equal(updated.body.heroTitle, "Новый заголовок главной");
+  const again = await request(app).get("/api/content").expect(200);
+  assert.equal(again.body.heroTitle, "Новый заголовок главной");
+
+  const bad = await admin
+    .put("/api/admin/content")
+    .set("X-CSRF-Token", adminToken)
+    .send({ ...before, heroTitle: "x".repeat(301) });
+  assert.equal(bad.status, 422);
+
+  const restored = await admin
+    .put("/api/admin/content")
+    .set("X-CSRF-Token", adminToken)
+    .send(before);
+  assert.equal(restored.status, 200);
+});

@@ -14,6 +14,7 @@ import { propertiesRouter } from "./properties.js";
 import { profileRouter } from "./profile.js";
 import { uploadsRouter, serveMedia } from "./uploads.js";
 import { assistantRouter } from "./assistant.js";
+import { adminRouter, contentRouter } from "./admin.js";
 import {
   architecturalModelsRouter,
   architecturalWorkerRouter,
@@ -141,6 +142,8 @@ export function createApp({ assistant, architecture } = {}) {
     res.json({ status: "ok" });
   });
   app.use("/api/auth", authRouter());
+  app.use("/api", contentRouter());
+  app.use("/api/admin", adminRouter());
   app.use("/api/profile", profileRouter());
   app.use("/api/assistant", assistantRouter(assistant));
   app.use(
@@ -161,7 +164,7 @@ export function createApp({ assistant, architecture } = {}) {
     serveArchitecturalModel,
   );
   app.get(
-    /^\/(?:catalog|property\/\d+|login|register|account|publish|edit\/\d+)?\/?$/,
+    /^\/(?:catalog|property\/\d+|login|register|account|publish|edit\/\d+|admin)?\/?$/,
     (req, res) => res.sendFile(path.join(publicDir, "index.html")),
   );
   app.use((req, res) => res.status(404).json({ error: "Страница не найдена" }));
