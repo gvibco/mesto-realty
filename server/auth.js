@@ -2,11 +2,14 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import { rateLimit } from "express-rate-limit";
 import { pool } from "./db.js";
+import { config } from "./config.js";
 import { loginSchema, registrationSchema, parse } from "./validation.js";
 import { newToken, startSession } from "./security.js";
 
 export const userColumns =
-  "id, name, email, phone, bio, avatar_filename, company, business_role";
+  "id, name, email, phone, bio, avatar_filename, company, business_role, is_blocked";
+const asAdmin = (email) =>
+  !!config.adminEmail && String(email).toLowerCase() === config.adminEmail;
 export function privateUser(row) {
   return row
     ? {
@@ -40,8 +43,26 @@ export function authRouter() {
           ])
         ).rows[0]
       : null;
-    if (!user) delete req.session.userId;
-    res.json({ user: privateUser(user), csrfToken: req.session.csrfToken });
+    if (!user || user.is_blocked) {
+      // Сессия заблокированного/удалённого пользователя уничтожается:
+      // regenerate удаляет старую запись из стора и выдаёт новый id.
+      if (req.session.userId) {
+        await new Promise((resolve, reject) =>
+          req.session.regenerate((err) => (err ? reject(err) : resolve())),
+        );
+      }
+      req.session.csrfToken ||= newToken();
+      return res.json({
+        user: null,
+        isAdmin: false,
+        csrfToken: req.session.csrfToken,
+      });
+    }
+    res.json({
+      user: privateUser(user),
+      isAdmin: asAdmin(user.email),
+      csrfToken: req.session.csrfToken,
+    });
   });
   router.post("/register", limiter, async (req, res) => {
     const data = parse(registrationSchema, req.body);
@@ -63,9 +84,11 @@ export function authRouter() {
       throw err;
     }
     await startSession(req, row.id);
-    res
-      .status(201)
-      .json({ user: privateUser(row), csrfToken: req.session.csrfToken });
+    res.status(201).json({
+      user: privateUser(row),
+      isAdmin: asAdmin(row.email),
+      csrfToken: req.session.csrfToken,
+    });
   });
   router.post("/login", limiter, async (req, res) => {
     const data = parse(loginSchema, req.body);
@@ -81,8 +104,14 @@ export function authRouter() {
     );
     if (!valid || !row)
       return res.status(401).json({ error: "Неверный email или пароль" });
+    if (row.is_blocked)
+      return res.status(403).json({ error: "Аккаунт заблокирован" });
     await startSession(req, row.id);
-    res.json({ user: privateUser(row), csrfToken: req.session.csrfToken });
+    res.json({
+      user: privateUser(row),
+      isAdmin: asAdmin(row.email),
+      csrfToken: req.session.csrfToken,
+    });
   });
   router.post("/logout", async (req, res) => {
     await new Promise((resolve, reject) =>

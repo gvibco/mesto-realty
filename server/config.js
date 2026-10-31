@@ -26,6 +26,7 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL,
   uploadDir: path.resolve(process.env.UPLOAD_DIR || "./uploads"),
   trustProxy: Number(process.env.TRUST_PROXY || 0),
+  adminEmail: (process.env.ADMIN_EMAIL || "").trim().toLowerCase(),
   roomModel: {
     workerToken: process.env.ROOM_MODEL_WORKER_TOKEN || "",
     minPhotos: boundedInteger(process.env.ROOM_MODEL_MIN_PHOTOS, 20, 2, 200),
