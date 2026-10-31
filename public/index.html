@@ -30,6 +30,7 @@
       crossorigin
     />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/js/theme.js"></script>
   </head>
   <body>
     <a class="skip" href="#main">К содержимому</a>
@@ -43,6 +44,14 @@
           ><a href="/catalog?deal=rent">Аренда</a><a href="/catalog">Каталог</a>
         </nav>
         <div class="header-actions">
+          <button
+            id="theme-toggle"
+            class="theme-toggle"
+            type="button"
+            aria-label="Включить тёмную тему"
+          >
+            🌙
+          </button>
           <a class="favorite-nav" href="/account?tab=favorites"
             >♡ &nbsp;Избранное</a
           ><a href="/login" data-auth-link>Войти</a
