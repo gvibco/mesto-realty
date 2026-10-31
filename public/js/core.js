@@ -143,9 +143,13 @@ export function navigate(url) {
 }
 // A back/forward-cache restore re-shows the page exactly as it was frozen:
 // with the finished exit animation the body would stay invisible (white
-// screen), and a pending navigation would fire again.
+// screen), and a pending navigation would fire again. The initial pageshow
+// (persisted === false) must NOT clear timers: the startup auth redirect is
+// scheduled before `load` fires (top-level await in the router delays it),
+// and clearing it here would strand the visitor on the loading placeholder.
 if (typeof window !== "undefined") {
-  window.addEventListener("pageshow", () => {
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
     clearTimeout(navigationTimer);
     clearTimeout(restoreTimer);
     document.body.classList.remove("is-leaving");

@@ -665,7 +665,7 @@ button.primary:hover {
 }
 /* Without this the rule above would paint the label blue on the blue
    button background. */
-.section-heading > a.button {
+.section-heading > a.button:not(.secondary) {
   color: var(--on-accent);
 }
 .categories {
@@ -1581,9 +1581,9 @@ footer {
     font-size: 12px;
   }
   .header-actions .button {
-    font-size: 11px;
-    padding: 10px;
-    min-height: 44px;
+    /* На узких экранах CTA дублируется баннером на главной — скрываем,
+       иначе шапка (тема-тумблер + ссылки + кнопка) переполняет viewport. */
+    display: none;
   }
   .hero-wrap {
     padding-top: 16px;
