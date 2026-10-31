@@ -7,7 +7,7 @@ import path from "node:path";
 import { rateLimit } from "express-rate-limit";
 import { config } from "./config.js";
 import { pool, transaction } from "./db.js";
-import { requireAuth, notFound } from "./security.js";
+import { requireAuth, notFound, isAdminUser } from "./security.js";
 import { id } from "./validation.js";
 import { imageView } from "./property-data.js";
 import { queueRoomModel, removeModelFiles } from "./room-models.js";
@@ -96,11 +96,16 @@ export async function removeFiles(names) {
 export function uploadsRouter() {
   const router = Router();
   const checkOwner = async (req, res, next) => {
+    req.isAdmin = await isAdminUser(req.session.userId);
     if (
       !(
         await pool.query(
-          "SELECT 1 FROM properties WHERE id=$1 AND owner_id=$2",
-          [id(req.params.id), req.session.userId],
+          req.isAdmin
+            ? "SELECT 1 FROM properties WHERE id=$1"
+            : "SELECT 1 FROM properties WHERE id=$1 AND owner_id=$2",
+          req.isAdmin
+            ? [id(req.params.id)]
+            : [id(req.params.id), req.session.userId],
         )
       ).rowCount
     )
@@ -126,8 +131,12 @@ export function uploadsRouter() {
           if (
             !(
               await client.query(
-                "SELECT id FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
-                [id(req.params.id), req.session.userId],
+                req.isAdmin
+                  ? "SELECT id FROM properties WHERE id=$1 FOR UPDATE"
+                  : "SELECT id FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
+                req.isAdmin
+                  ? [id(req.params.id)]
+                  : [id(req.params.id), req.session.userId],
               )
             ).rowCount
           )
@@ -171,11 +180,16 @@ export function uploadsRouter() {
     requireAuth,
     async (req, res) => {
       let oldModel;
+      const admin = await isAdminUser(req.session.userId);
       const filename = await transaction(async (client) => {
         const property = (
           await client.query(
-            "SELECT status FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
-            [id(req.params.id), req.session.userId],
+            admin
+              ? "SELECT status FROM properties WHERE id=$1 FOR UPDATE"
+              : "SELECT status FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
+            admin
+              ? [id(req.params.id)]
+              : [id(req.params.id), req.session.userId],
           )
         ).rows[0];
         if (!property) throw notFound();
@@ -217,10 +231,11 @@ export function uploadsRouter() {
 export async function serveMedia(req, res, next) {
   const name = req.params.filename;
   if (!/^[a-f0-9-]{36}\.webp$/.test(name)) throw notFound();
+  const admin = await isAdminUser(req.session.userId);
   const allowed = await pool.query(
-    `SELECT 1 FROM property_images i JOIN properties p ON p.id=i.property_id WHERE i.filename=$1 AND (p.status='published' OR p.owner_id=$2)
+    `SELECT 1 FROM property_images i JOIN properties p ON p.id=i.property_id WHERE i.filename=$1 AND ($3 OR p.status='published' OR p.owner_id=$2)
     UNION ALL SELECT 1 FROM users WHERE avatar_filename=$1 LIMIT 1`,
-    [name, req.session.userId || null],
+    [name, req.session.userId || null, admin],
   );
   if (!allowed.rowCount) throw notFound();
   // Revalidate every request: unpublishing must immediately revoke public access.

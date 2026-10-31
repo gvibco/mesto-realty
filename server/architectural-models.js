@@ -9,7 +9,7 @@ import { rateLimit } from "express-rate-limit";
 import { config } from "./config.js";
 import { pool, transaction } from "./db.js";
 import { id } from "./validation.js";
-import { requireAuth, notFound } from "./security.js";
+import { requireAuth, notFound, isAdminUser } from "./security.js";
 import {
   analyzeFloorPlan,
   architecturalPrompt,
@@ -45,22 +45,24 @@ function parse(schema, value) {
   if (!result.success) throw error("Проверьте размеры и параметры");
   return result.data;
 }
-async function own(client, propertyId, userId) {
+async function own(client, propertyId, userId, admin = false) {
   if (
     !(
       await client.query(
-        "SELECT id FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
-        [propertyId, userId],
+        admin
+          ? "SELECT id FROM properties WHERE id=$1 FOR UPDATE"
+          : "SELECT id FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
+        admin ? [propertyId] : [propertyId, userId],
       )
     ).rows.length
   )
     throw notFound();
 }
-async function visible(propertyId, userId) {
+async function visible(propertyId, userId, admin = false) {
   const row = (
     await pool.query(
-      "SELECT owner_id,category FROM properties WHERE id=$1 AND (status='published' OR owner_id=$2)",
-      [propertyId, userId || null],
+      "SELECT owner_id,category FROM properties WHERE id=$1 AND ($3 OR status='published' OR owner_id=$2)",
+      [propertyId, userId || null, admin],
     )
   ).rows[0];
   if (!row) throw notFound();
@@ -90,15 +92,16 @@ const upload = multer({
 export function architecturalModelsRouter() {
   const router = Router();
   router.get("/properties/:id/architecture", async (req, res) => {
+    const admin = await isAdminUser(req.session.userId);
     const propertyId = id(req.params.id),
-      p = await visible(propertyId, req.session.userId);
+      p = await visible(propertyId, req.session.userId, admin);
     const row = (
       await pool.query(
         "SELECT * FROM architectural_models WHERE property_id=$1",
         [propertyId],
       )
     ).rows[0];
-    const owner = p.owner_id === req.session.userId;
+    const owner = admin || p.owner_id === req.session.userId;
     const model =
       row?.state === "ready"
         ? {
@@ -148,8 +151,9 @@ export function architecturalModelsRouter() {
     async (req, res) => {
       const propertyId = id(req.params.id),
         d = parse(dimensions, req.body);
+      const admin = await isAdminUser(req.session.userId);
       await transaction(async (client) => {
-        await own(client, propertyId, req.session.userId);
+        await own(client, propertyId, req.session.userId, admin);
         await client.query(
           "INSERT INTO architectural_inputs(property_id,width,depth,height) VALUES($1,$2,$3,$4) ON CONFLICT(property_id) DO UPDATE SET width=$2,depth=$3,height=$4,updated_at=now()",
           [propertyId, d.width, d.depth, d.height],
@@ -171,11 +175,14 @@ export function architecturalModelsRouter() {
     async (req, res, next) => {
       try {
         const propertyId = id(req.params.id);
+        const admin = await isAdminUser(req.session.userId);
         if (
           !(
             await pool.query(
-              "SELECT id FROM properties WHERE id=$1 AND owner_id=$2",
-              [propertyId, req.session.userId],
+              admin
+                ? "SELECT id FROM properties WHERE id=$1"
+                : "SELECT id FROM properties WHERE id=$1 AND owner_id=$2",
+              admin ? [propertyId] : [propertyId, req.session.userId],
             )
           ).rows.length
         )
@@ -223,8 +230,9 @@ export function architecturalModelsRouter() {
       await writeFile(path.join(plansDir, filename), bytes, { flag: "wx" });
       let old;
       try {
+        const admin = await isAdminUser(req.session.userId);
         await transaction(async (client) => {
-          await own(client, propertyId, req.session.userId);
+          await own(client, propertyId, req.session.userId, admin);
           old = (
             await client.query(
               "SELECT plan_filename FROM architectural_inputs WHERE property_id=$1",
@@ -257,8 +265,9 @@ export function architecturalModelsRouter() {
     async (req, res) => {
       let old;
       const propertyId = id(req.params.id);
+      const admin = await isAdminUser(req.session.userId);
       await transaction(async (client) => {
-        await own(client, propertyId, req.session.userId);
+        await own(client, propertyId, req.session.userId, admin);
         old = (
           await client.query(
             "SELECT plan_filename FROM architectural_inputs WHERE property_id=$1",
@@ -279,7 +288,11 @@ export function architecturalModelsRouter() {
 }
 export async function servePropertyPlan(req, res, next) {
   const propertyId = id(req.params.id);
-  await visible(propertyId, req.session.userId);
+  await visible(
+    propertyId,
+    req.session.userId,
+    await isAdminUser(req.session.userId),
+  );
   const row = (
     await pool.query(
       "SELECT plan_filename FROM architectural_inputs WHERE property_id=$1",
@@ -302,10 +315,16 @@ export async function servePropertyPlan(req, res, next) {
   );
 }
 export async function serveArchitecturalModel(req, res, next) {
+  const admin = await isAdminUser(req.session.userId);
   const row = (
     await pool.query(
-      "SELECT m.filename FROM architectural_models m JOIN properties p ON p.id=m.property_id WHERE m.property_id=$1 AND m.revision=$2 AND m.state='ready' AND (p.status='published' OR p.owner_id=$3)",
-      [id(req.params.id), id(req.params.revision), req.session.userId || null],
+      "SELECT m.filename FROM architectural_models m JOIN properties p ON p.id=m.property_id WHERE m.property_id=$1 AND m.revision=$2 AND m.state='ready' AND ($4 OR p.status='published' OR p.owner_id=$3)",
+      [
+        id(req.params.id),
+        id(req.params.revision),
+        req.session.userId || null,
+        admin,
+      ],
     )
   ).rows[0];
   if (!row?.filename || !scenePattern.test(row.filename)) throw notFound();

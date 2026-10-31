@@ -8,7 +8,7 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { pool, transaction } from "./db.js";
 import { id } from "./validation.js";
-import { notFound } from "./security.js";
+import { notFound, isAdminUser } from "./security.js";
 import { queueArchitecturalModel } from "./architectural-store.js";
 import {
   MAX_SCENE_BYTES,
@@ -92,10 +92,11 @@ export function roomModelsRouter() {
   const router = Router();
   router.get("/properties/:id/model", async (req, res) => {
     const propertyId = id(req.params.id);
+    const admin = await isAdminUser(req.session.userId);
     const p = (
       await pool.query(
-        "SELECT owner_id,category FROM properties WHERE id=$1 AND (status='published' OR owner_id=$2)",
-        [propertyId, req.session.userId || null],
+        "SELECT owner_id,category FROM properties WHERE id=$1 AND ($3 OR status='published' OR owner_id=$2)",
+        [propertyId, req.session.userId || null, admin],
       )
     ).rows[0];
     if (!p) throw notFound();
@@ -105,7 +106,7 @@ export function roomModelsRouter() {
         [propertyId],
       )
     ).rows[0];
-    const isOwner = p.owner_id === req.session.userId;
+    const isOwner = admin || p.owner_id === req.session.userId;
     if (row?.state === "ready")
       return res.json({
         model: {
@@ -144,10 +145,11 @@ export function roomModelsRouter() {
 export async function serveRoomModel(req, res, next) {
   const propertyId = id(req.params.id),
     revision = id(req.params.revision);
+  const admin = await isAdminUser(req.session.userId);
   const row = (
     await pool.query(
-      `SELECT m.filename FROM property_models m JOIN properties p ON p.id=m.property_id WHERE m.property_id=$1 AND m.revision=$2 AND m.state='ready' AND (p.status='published' OR p.owner_id=$3)`,
-      [propertyId, revision, req.session.userId || null],
+      `SELECT m.filename FROM property_models m JOIN properties p ON p.id=m.property_id WHERE m.property_id=$1 AND m.revision=$2 AND m.state='ready' AND ($4 OR p.status='published' OR p.owner_id=$3)`,
+      [propertyId, revision, req.session.userId || null, admin],
     )
   ).rows[0];
   if (!row?.filename || !/^[a-f0-9-]{36}\.ply$/.test(row.filename))

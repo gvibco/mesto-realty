@@ -189,7 +189,7 @@ export async function editorPage(id) {
     const data = await api("/properties/" + encodeURIComponent(id));
     p = data.property;
     images = data.images;
-    if (String(p.ownerId) !== String(state.user.id))
+    if (String(p.ownerId) !== String(state.user.id) && !state.isAdmin)
       throw new Error("Вы можете редактировать только свои объявления.");
   }
   let propertyId = id;

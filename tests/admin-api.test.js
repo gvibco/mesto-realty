@@ -132,3 +132,44 @@ test("blocked user cannot log in and loses the active session", async () => {
   assert.equal(ok.status, 200);
   userToken = ok.body.csrfToken;
 });
+
+test("admin sees and edits a foreign draft via existing endpoints", async () => {
+  const anon = await request(app).get(`/api/properties/${draftId}`);
+  assert.equal(anon.status, 404);
+  const seen = await admin.get(`/api/properties/${draftId}`).expect(200);
+  assert.equal(seen.body.property.id, draftId);
+  const patched = await admin
+    .patch(`/api/properties/${draftId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ title: "Отредактировано админом" });
+  assert.equal(patched.status, 200);
+  assert.equal(patched.body.property.title, "Отредактировано админом");
+
+  // Посторонний зарегистрированный пользователь не может править чужое.
+  const other = request.agent(app);
+  let r = await other.get("/api/auth/session").expect(200);
+  r = await other
+    .post("/api/auth/register")
+    .set("X-CSRF-Token", r.body.csrfToken)
+    .send({
+      name: "Посторонний Тест",
+      email: `other-${Date.now()}@example.com`,
+      password,
+      company: "",
+      businessRole: "broker",
+    })
+    .expect(201);
+  try {
+    assert.equal(
+      await other.get(`/api/properties/${draftId}`).then((x) => x.status),
+      404,
+    );
+    const forbidden = await other
+      .patch(`/api/properties/${draftId}`)
+      .set("X-CSRF-Token", r.body.csrfToken)
+      .send({ title: "Не положено" });
+    assert.equal(forbidden.status, 404);
+  } finally {
+    await pool.query("DELETE FROM users WHERE id=$1", [r.body.user.id]);
+  }
+});

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { pool, transaction } from "./db.js";
-import { requireAuth, notFound } from "./security.js";
+import { requireAuth, notFound, isAdminUser } from "./security.js";
 import { id, parse, propertySchema, searchSchema } from "./validation.js";
 import {
   publicColumns,
@@ -54,11 +54,13 @@ const sqlKeys = [
   "contact_phone",
   "status",
 ];
-export async function owned(client, propertyId, userId) {
+export async function owned(client, propertyId, userId, admin = false) {
   const row = (
     await client.query(
-      "SELECT * FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
-      [propertyId, userId],
+      admin
+        ? "SELECT * FROM properties WHERE id=$1 FOR UPDATE"
+        : "SELECT * FROM properties WHERE id=$1 AND owner_id=$2 FOR UPDATE",
+      admin ? [propertyId] : [propertyId, userId],
     )
   ).rows[0];
   if (!row) throw notFound();
@@ -121,24 +123,26 @@ export function propertiesRouter() {
     message: { error: "Слишком много запросов контактов. Подождите минуту." },
   });
   router.get("/properties/:id/contact", contactLimit, async (req, res) => {
+    const admin = await isAdminUser(req.session.userId);
     const row = (
       await pool.query(
-        "SELECT contact_phone,contact_name FROM properties WHERE id=$1 AND (status='published' OR owner_id=$2)",
-        [id(req.params.id), req.session.userId || null],
+        "SELECT contact_phone,contact_name FROM properties WHERE id=$1 AND ($3 OR status='published' OR owner_id=$2)",
+        [id(req.params.id), req.session.userId || null, admin],
       )
     ).rows[0];
     if (!row) throw notFound();
     res.json({ phone: row.contact_phone, contactName: row.contact_name });
   });
   router.get("/properties/:id", async (req, res) => {
+    const admin = await isAdminUser(req.session.userId);
     const row = (
       await pool.query(
-        `SELECT ${publicColumns},${imageColumns},EXISTS(SELECT 1 FROM favorites WHERE property_id=p.id AND user_id=$2) AS is_favorite FROM properties p WHERE p.id=$1 AND (p.status='published' OR p.owner_id=$2)`,
-        [id(req.params.id), req.session.userId || null],
+        `SELECT ${publicColumns},${imageColumns},EXISTS(SELECT 1 FROM favorites WHERE property_id=p.id AND user_id=$2) AS is_favorite FROM properties p WHERE p.id=$1 AND ($3 OR p.status='published' OR p.owner_id=$2)`,
+        [id(req.params.id), req.session.userId || null, admin],
       )
     ).rows[0];
     if (!row) throw notFound();
-    if (row.owner_id === req.session.userId)
+    if (admin || row.owner_id === req.session.userId)
       row.contact_phone = (
         await pool.query("SELECT contact_phone FROM properties WHERE id=$1", [
           row.id,
@@ -196,11 +200,13 @@ export function propertiesRouter() {
   });
   router.patch("/properties/:id", requireAuth, async (req, res) => {
     let oldModel;
+    const admin = await isAdminUser(req.session.userId);
     const row = await transaction(async (client) => {
       const current = await owned(
         client,
         id(req.params.id),
         req.session.userId,
+        admin,
       );
       const data = parse(propertySchema, {
         ...propertyView(current),
@@ -238,11 +244,13 @@ export function propertiesRouter() {
   router.delete("/properties/:id", requireAuth, async (req, res) => {
     let modelFile;
     let architecturalFiles;
+    const admin = await isAdminUser(req.session.userId);
     const files = await transaction(async (client) => {
       const current = await owned(
         client,
         id(req.params.id),
         req.session.userId,
+        admin,
       );
       const images = (
         await client.query(
