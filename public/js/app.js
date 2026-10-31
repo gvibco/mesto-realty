@@ -43,6 +43,14 @@ function header() {
     link.href = "/account";
     link.textContent = "Кабинет";
   }
+  if (state.isAdmin && !document.querySelector("#header [data-admin-link]")) {
+    const actions = document.querySelector("#header .header-actions");
+    const adminLink = document.createElement("a");
+    adminLink.href = "/admin";
+    adminLink.dataset.adminLink = "";
+    adminLink.textContent = "Админ-панель";
+    actions.insertBefore(adminLink, actions.querySelector("[data-auth-link]"));
+  }
 }
 const options = { "": "Все назначения", ...categories };
 
@@ -56,7 +64,7 @@ async function home() {
     free_purpose: "Для вашего формата",
     commercial_land: "Для развития проекта",
   };
-  main.innerHTML = `<div class="container hero-wrap"><section class="hero"><div class="hero-content"><div class="eyebrow">Коммерческая недвижимость</div><h1>Пространство для вашего бизнеса.</h1><p>Офисы, торговые площади и объекты для логистики. Аренда и покупка напрямую у авторов объявлений.</p><a class="hero-link arrow-link" href="/catalog">Открыть каталог</a></div><img class="hero-image" src="/assets/hero.webp" srcset="/assets/hero-800.webp 800w, /assets/hero-1200.webp 1200w, /assets/hero-1600.webp 1600w" sizes="(max-width: 800px) 100vw, 50vw" alt="Архитектура современного делового центра" width="1600" height="1067" fetchpriority="high"></section><form class="search-panel" action="/catalog"><div class="deal-tabs"><label><input type="radio" name="deal" value="rent" checked>Аренда</label><label><input type="radio" name="deal" value="sale">Покупка</label></div><div class="search-row">${field("q", "Город или район", "", 'placeholder="Например, Москва"')}${select("category", "Назначение объекта", options)}${field("maxPrice", "Бюджет до, ₽", "", 'type="number" min="1" step="0.01" placeholder="Не ограничен"')}<button class="button arrow-link" type="submit">Найти объект</button></div></form><section class="category-section"><div class="section-heading"><h2>Под задачи вашего бизнеса</h2></div><nav class="categories" aria-label="Назначение объекта">${Object.entries(
+  main.innerHTML = `<div class="container hero-wrap"><section class="hero"><div class="hero-content"><div class="eyebrow">Коммерческая недвижимость для бизнеса</div><h1 id="hero-title">Подберём помещение под ваш бизнес за 48 часов — платите только 1% при покупке</h1><p id="hero-text">Офисы, склады и торговые площади напрямую от собственников. Размещение и аренда — бесплатно, комиссия 1% — только когда сделка продажи состоялась.</p><a class="hero-link arrow-link" href="/catalog">Открыть каталог</a></div><img class="hero-image" src="/assets/hero.webp" srcset="/assets/hero-800.webp 800w, /assets/hero-1200.webp 1200w, /assets/hero-1600.webp 1600w" sizes="(max-width: 800px) 100vw, 50vw" alt="Архитектура современного делового центра" width="1600" height="1067" fetchpriority="high"></section><form class="search-panel" action="/catalog"><div class="deal-tabs"><label><input type="radio" name="deal" value="rent" checked>Аренда</label><label><input type="radio" name="deal" value="sale">Покупка</label></div><div class="search-row">${field("q", "Город или район", "", 'placeholder="Например, Москва"')}${select("category", "Назначение объекта", options)}${field("maxPrice", "Бюджет до, ₽", "", 'type="number" min="1" step="0.01" placeholder="Не ограничен"')}<button class="button arrow-link" type="submit">Найти объект</button></div></form><section class="category-section"><div class="section-heading"><h2>Под задачи вашего бизнеса</h2></div><nav class="categories" aria-label="Назначение объекта">${Object.entries(
     categories,
   )
     .map(
@@ -83,6 +91,24 @@ async function home() {
     document.querySelector("#home-listings").innerHTML =
       `<div class="error-panel full"><p>${esc(e.message)}</p><a class="button secondary" href="/">Повторить</a></div>`;
   }
+  // Тексты главной могут быть отредактированы в админ-панели: дефолты уже
+  // в разметке (нет скачков LCP), при отличии заменяем из /api/content.
+  api("/content")
+    .then((content) => {
+      if ((location.pathname.replace(/\/$/, "") || "/") !== "/") return;
+      for (const [elementId, value] of [
+        ["hero-title", content.heroTitle],
+        ["hero-text", content.heroText],
+        ["commission-title", content.commissionTitle],
+        ["commission-text", content.commissionText],
+      ]) {
+        const el = document.getElementById(elementId);
+        if (el && value) el.textContent = value;
+      }
+    })
+    .catch(() => {
+      /* остаются тексты по умолчанию */
+    });
 }
 async function catalog() {
   const q = new URLSearchParams(location.search);
@@ -243,6 +269,10 @@ try {
     await sessionReady;
     const { accountPage } = await import("./forms.js");
     await accountPage();
+  } else if (path === "/admin") {
+    await sessionReady;
+    const { adminPage } = await import("./admin.js");
+    await adminPage();
   } else if (path === "/publish" || /^\/edit\/[^/]+$/.test(path)) {
     await sessionReady;
     const { editorPage } = await import("./forms.js");

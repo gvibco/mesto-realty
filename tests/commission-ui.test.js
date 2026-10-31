@@ -141,3 +141,21 @@ test("rent property has no commission note", async () => {
   assert.equal(await page.locator(".commission-note").count(), 0);
   await page.close();
 });
+
+test("home replaces default copy with /api/content values", async () => {
+  const page = await browser.newPage();
+  await page
+    .context()
+    .addCookies([{ name: "stub-content", value: "1", url: base() }]);
+  await page.goto(base() + "/", { waitUntil: "networkidle" });
+  await page.waitForFunction(
+    () =>
+      document.querySelector("#hero-title")?.textContent ===
+      "ЗАГОЛОВОК ИЗ АДМИНКИ",
+  );
+  assert.equal(
+    await page.locator("#commission-title").textContent(),
+    "Комиссия из админки",
+  );
+  await page.close();
+});
