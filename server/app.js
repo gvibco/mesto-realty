@@ -14,7 +14,6 @@ import { propertiesRouter } from "./properties.js";
 import { profileRouter } from "./profile.js";
 import { uploadsRouter, serveMedia } from "./uploads.js";
 import { assistantRouter } from "./assistant.js";
-import { subscriptionsRouter } from "./subscriptions.js";
 import {
   architecturalModelsRouter,
   architecturalWorkerRouter,
@@ -144,7 +143,6 @@ export function createApp({ assistant, architecture } = {}) {
   app.use("/api/auth", authRouter());
   app.use("/api/profile", profileRouter());
   app.use("/api/assistant", assistantRouter(assistant));
-  app.use("/api", subscriptionsRouter());
   app.use(
     "/api",
     propertiesRouter(),

@@ -46,73 +46,6 @@ function header() {
 }
 const options = { "": "Все назначения", ...categories };
 
-/* ── Subscription modal ── */
-let subModal = null;
-
-function ensureSubModal() {
-  if (subModal) return subModal;
-  const overlay = document.createElement("div");
-  overlay.id = "sub-modal";
-  overlay.className = "modal-overlay";
-  overlay.setAttribute("hidden", "");
-  overlay.setAttribute("role", "dialog");
-  overlay.setAttribute("aria-modal", "true");
-  overlay.setAttribute("aria-labelledby", "sub-modal-title");
-  overlay.innerHTML = `<div class="modal-dialog"><div class="modal-header"><h2 id="sub-modal-title">Оставить заявку</h2><button class="modal-close" aria-label="Закрыть">×</button></div><p class="modal-tariff-label" id="sub-modal-tariff-label"></p><form id="sub-modal-form" class="stack"><input type="hidden" name="tariff" value="">${field("name", "Имя", "", 'required minlength="2" maxlength="80" autocomplete="name"')}${field("phone", "Телефон", "", 'type="tel" required maxlength="30" autocomplete="tel" placeholder="+7 900 000-00-00"')}${field("email", "Email", "", 'type="email" required maxlength="254" autocomplete="email"')}<div class="form-error" tabindex="-1" role="alert"></div><button class="button" type="submit">Отправить</button></form><p class="modal-success" hidden>Спасибо! Мы свяжемся с вами в ближайшее время.</p></div>`;
-  document.body.appendChild(overlay);
-
-  overlay.querySelector(".modal-close").onclick = closeSubModal;
-  overlay.onclick = (e) => {
-    if (e.target === overlay) closeSubModal();
-  };
-
-  overlay.querySelector("#sub-modal-form").onsubmit = async (e) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const values = Object.fromEntries(new FormData(form));
-    busy(form, true);
-    try {
-      await api("/subscriptions", { method: "POST", body: values });
-      form.hidden = true;
-      overlay.querySelector(".modal-success").removeAttribute("hidden");
-      setTimeout(closeSubModal, 3500);
-    } catch (err) {
-      errors(form, err);
-      busy(form, false);
-    }
-  };
-
-  subModal = overlay;
-  return overlay;
-}
-
-function openSubModal(tariff) {
-  const modal = ensureSubModal();
-  const form = modal.querySelector("#sub-modal-form");
-  form.reset();
-  form.removeAttribute("hidden");
-  busy(form, false);
-  modal.querySelector(".form-error").textContent = "";
-  modal.querySelector(".modal-success").setAttribute("hidden", "");
-  form.querySelector('[name="tariff"]').value = tariff;
-  modal.querySelector("#sub-modal-tariff-label").textContent =
-    "Тариф: " + tariff;
-  modal.removeAttribute("hidden");
-  document.body.style.overflow = "hidden";
-  form.querySelector("input:not([type='hidden'])").focus();
-}
-
-function closeSubModal() {
-  if (!subModal) return;
-  subModal.setAttribute("hidden", "");
-  document.body.style.overflow = "";
-}
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && subModal && !subModal.hasAttribute("hidden"))
-    closeSubModal();
-});
-
 /* ── Pages ── */
 async function home() {
   const purpose = {
@@ -132,26 +65,7 @@ async function home() {
     )
     .join(
       "",
-    )}</nav></section><section class="listing-section"><div class="section-heading"><div><h2>Новые объекты</h2><p>Свежие предложения коммерческой недвижимости</p></div><a class="arrow-link" href="/catalog">Весь каталог</a></div><div id="home-listings" class="grid"><div class="loading">Загружаем объекты…</div></div></section><section class="city-section"><div class="section-heading"><div><h2>Где будет работать ваш бизнес?</h2><p>Посмотрите предложения в интересующем городе</p></div></div><div class="city-grid">${["Москва", "Санкт-Петербург", "Казань", "Сочи"].map((city) => `<a class="city-link arrow-link" href="/catalog?q=${encodeURIComponent(city)}">${city}</a>`).join("")}</div></section><section class="pricing-section"><div class="section-heading"><div><h2>Тарифы</h2><p>Выберите подходящий план для вашего бизнеса</p></div></div><div class="pricing-grid"><div class="pricing-card" data-tariff="Базовый"><div class="pricing-name">Базовый</div><div class="pricing-price">Бесплатно</div><ul class="pricing-features"><li>Размещение объявлений без продвижения</li><li>Базовый поиск по объектам</li></ul><button class="button secondary sub-request" data-tariff="Базовый">Оставить заявку</button></div><div class="pricing-card featured" data-tariff="Бизнес"><span class="pricing-badge">Популярный</span><div class="pricing-name">Бизнес</div><div class="pricing-price">1 990 ₽<small> / месяц</small></div><ul class="pricing-features"><li>Продвижение объявлений в топ выдачи</li><li>Приоритетное размещение в категории</li><li>ИИ-агент: автоподбор объектов под запрос, краткий анализ объекта</li></ul><button class="button secondary sub-request" data-tariff="Бизнес">Оставить заявку</button></div><div class="pricing-card" data-tariff="Премиум"><div class="pricing-name">Премиум</div><div class="pricing-price">5 900 ₽<small> / месяц</small></div><ul class="pricing-features"><li>Максимальное продвижение (Featured / закреплённые позиции)</li><li>ИИ-агент: подбор, анализ рынка, сравнение предложений, генерация описания</li><li>Персональный менеджер</li></ul><button class="button secondary sub-request" data-tariff="Премиум">Оставить заявку</button></div></div></section><section class="publish-banner"><div><span class="banner-label">Собственникам и брокерам</span><h2>Ваш объект. Следующий бизнес.</h2><p>Добавьте параметры, условия сделки и фотографии.<br>Получайте обращения от заинтересованных компаний.</p></div><a class="button arrow-link" href="/publish">Разместить объект</a></section></div>`;
-
-  // Wire pricing buttons → modal
-  main.querySelectorAll(".sub-request").forEach((btn) => {
-    btn.onclick = () => openSubModal(btn.dataset.tariff);
-  });
-
-  // Make pricing cards selectable
-  main.querySelectorAll(".pricing-card").forEach((card) => {
-    card.addEventListener("click", (e) => {
-      if (e.target.closest("button")) return;
-      main.querySelectorAll(".pricing-card").forEach((c) => {
-        c.classList.remove("selected");
-        c.querySelector(".sub-request")?.classList.add("secondary");
-      });
-      card.classList.add("selected");
-      card.querySelector(".sub-request")?.classList.remove("secondary");
-      card.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-  });
+    )}</nav></section><section class="listing-section"><div class="section-heading"><div><h2>Новые объекты</h2><p>Свежие предложения коммерческой недвижимости</p></div><a class="arrow-link" href="/catalog">Весь каталог</a></div><div id="home-listings" class="grid"><div class="loading">Загружаем объекты…</div></div></section><section class="city-section"><div class="section-heading"><div><h2>Где будет работать ваш бизнес?</h2><p>Посмотрите предложения в интересующем городе</p></div></div><div class="city-grid">${["Москва", "Санкт-Петербург", "Казань", "Сочи"].map((city) => `<a class="city-link arrow-link" href="/catalog?q=${encodeURIComponent(city)}">${city}</a>`).join("")}</div></section><section class="commission-section"><div class="section-heading"><div><h2 id="commission-title">Как мы зарабатываем</h2><p id="commission-text">Комиссия сервиса — 1% только с успешной продажи объекта. Размещение объявлений и аренда — бесплатно.</p></div></div><div class="commission-facts"><div class="commission-fact"><b>0 ₽</b><span>размещение объявлений</span></div><div class="commission-fact"><b>0 ₽</b><span>аренда — комиссии нет</span></div><div class="commission-fact"><b>1%</b><span>только с состоявшейся продажи</span></div></div></section><section class="publish-banner"><div><span class="banner-label">Собственникам и брокерам</span><h2>Ваш объект. Следующий бизнес.</h2><p>Добавьте параметры, условия сделки и фотографии.<br>Получайте обращения от заинтересованных компаний.</p></div><a class="button arrow-link" href="/publish">Разместить объект</a></section></div>`;
 
   try {
     await sessionReady;
@@ -227,7 +141,7 @@ async function detail(id) {
   } = await api("/properties/" + encodeURIComponent(id));
   if (location.pathname !== requestedPath) return;
   document.title = p.title + " | Место Бизнес";
-  main.innerHTML = `<div class="container page"><div class="breadcrumb"><a href="/">Главная</a> / <a href="/catalog">Каталог</a> / ${esc(p.city)}</div><h1>${esc(p.title)}</h1><p class="muted detail-address">${esc(p.city)}, ${esc(p.district ? p.district + ", " : "")}${esc(p.address)}</p><div class="detail-layout"><div><img class="gallery-main" src="${safeImage(images[0]?.url)}" alt="${esc(p.title)}" width="900" height="620">${images.length > 1 ? `<div class="thumbnails" aria-label="Фотографии">${images.map((im, i) => `<button class="${i === 0 ? "selected" : ""}" data-photo="${safeImage(im.url)}" aria-label="Фото ${i + 1}"><img src="${safeImage(im.url)}" alt="Фото ${i + 1}" width="100" height="72"></button>`).join("")}</div>` : ""}<div class="detail-facts">${propertyFacts(p)}</div><h2>Об объекте</h2><p class="description">${esc(p.description)}</p><div id="room-model-host" hidden></div></div><aside class="contact-panel"><div class="detail-price">${money(p.price)}${p.deal === "rent" ? '<span class="muted"> / месяц</span>' : ""}</div><p class="muted">${rate(p)}</p><p class="muted">${p.tax && p.tax !== "unspecified" ? taxLabels[p.tax] : "НДС: не указан"}</p>${p.status !== "published" ? `<p class="muted">${p.status === "draft" ? "Черновик" : "Объявление в архиве"}</p>` : ""}<button id="reveal" class="button">Показать телефон</button><button class="button secondary" id="detail-favorite">${p.isFavorite ? "Убрать из избранного" : "♡ Сохранить в избранное"}</button><div class="owner">${owner.avatar ? `<img class="avatar" src="${safeImage(owner.avatar)}" alt="${esc(owner.name)}">` : `<span class="avatar">${esc(owner.name?.[0] || "М")}</span>`}<div><strong>${esc(owner.company || owner.name)}</strong><p>${esc(businessRoles[owner.businessRole] || "Собственник")}</p>${owner.company || (p.contactName && p.contactName !== owner.name) ? `<p>${esc(p.contactName || owner.name)}</p>` : ""}</div></div>${owner.bio ? `<p class="muted owner-bio">${esc(owner.bio)}</p>` : ""}<a class="button secondary" href="/catalog?owner=${encodeURIComponent(owner.id)}">Объявления автора ↗</a>${state.user?.id === p.ownerId ? `<a class="button secondary" href="/edit/${encodeURIComponent(p.id)}">Редактировать</a>` : ""}</aside></div>${otherProperties?.length ? `<section class="detail-more"><div class="section-heading"><h2>Другие объявления автора</h2></div><div class="grid">${otherProperties.map((item) => card(item)).join("")}</div></section>` : ""}</div>`;
+  main.innerHTML = `<div class="container page"><div class="breadcrumb"><a href="/">Главная</a> / <a href="/catalog">Каталог</a> / ${esc(p.city)}</div><h1>${esc(p.title)}</h1><p class="muted detail-address">${esc(p.city)}, ${esc(p.district ? p.district + ", " : "")}${esc(p.address)}</p><div class="detail-layout"><div><img class="gallery-main" src="${safeImage(images[0]?.url)}" alt="${esc(p.title)}" width="900" height="620">${images.length > 1 ? `<div class="thumbnails" aria-label="Фотографии">${images.map((im, i) => `<button class="${i === 0 ? "selected" : ""}" data-photo="${safeImage(im.url)}" aria-label="Фото ${i + 1}"><img src="${safeImage(im.url)}" alt="Фото ${i + 1}" width="100" height="72"></button>`).join("")}</div>` : ""}<div class="detail-facts">${propertyFacts(p)}</div><h2>Об объекте</h2><p class="description">${esc(p.description)}</p><div id="room-model-host" hidden></div></div><aside class="contact-panel"><div class="detail-price">${money(p.price)}${p.deal === "rent" ? '<span class="muted"> / месяц</span>' : ""}</div><p class="muted">${rate(p)}</p><p class="muted">${p.tax && p.tax !== "unspecified" ? taxLabels[p.tax] : "НДС: не указан"}</p>${p.deal === "sale" ? `<p class="commission-note">Комиссия сервиса: 1% — ${money(Math.round(Number(p.price) * 0.01))}</p>` : ""}${p.status !== "published" ? `<p class="muted">${p.status === "draft" ? "Черновик" : "Объявление в архиве"}</p>` : ""}<button id="reveal" class="button">Показать телефон</button><button class="button secondary" id="detail-favorite">${p.isFavorite ? "Убрать из избранного" : "♡ Сохранить в избранное"}</button><div class="owner">${owner.avatar ? `<img class="avatar" src="${safeImage(owner.avatar)}" alt="${esc(owner.name)}">` : `<span class="avatar">${esc(owner.name?.[0] || "М")}</span>`}<div><strong>${esc(owner.company || owner.name)}</strong><p>${esc(businessRoles[owner.businessRole] || "Собственник")}</p>${owner.company || (p.contactName && p.contactName !== owner.name) ? `<p>${esc(p.contactName || owner.name)}</p>` : ""}</div></div>${owner.bio ? `<p class="muted owner-bio">${esc(owner.bio)}</p>` : ""}<a class="button secondary" href="/catalog?owner=${encodeURIComponent(owner.id)}">Объявления автора ↗</a>${state.user?.id === p.ownerId ? `<a class="button secondary" href="/edit/${encodeURIComponent(p.id)}">Редактировать</a>` : ""}</aside></div>${otherProperties?.length ? `<section class="detail-more"><div class="section-heading"><h2>Другие объявления автора</h2></div><div class="grid">${otherProperties.map((item) => card(item)).join("")}</div></section>` : ""}</div>`;
   if (p.category !== "commercial_land") {
     const { mountRoomModel } = await import("./room-model.js");
     mountRoomModel(
