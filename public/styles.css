@@ -597,16 +597,6 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 450px;
   object-fit: cover;
 }
-.hero-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
-  min-height: 44px;
-  margin-top: 20px;
-  color: var(--blue);
-  font-weight: 700;
-  font-size: 13px;
-}
 .arrow-link::after {
   content: "";
   display: inline-block;
@@ -1677,9 +1667,6 @@ footer {
   }
   .hero .eyebrow {
     font-size: 10px;
-  }
-  .hero-link {
-    margin-top: 0;
   }
   .hero-image {
     height: 210px;

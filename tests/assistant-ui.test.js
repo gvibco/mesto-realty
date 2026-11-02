@@ -70,6 +70,13 @@ test("home shows AI call to action in the hero and hides the floating launcher",
   assert.ok(
     await page.locator(".search-hint [data-assistant-open]").isVisible(),
   );
+  const ai = await page.locator(".hero-ai").boundingBox();
+  const catalog = await page.locator(".hero-actions a").boundingBox();
+  assert.equal(Math.round(ai.height), Math.round(catalog.height));
+  assert.ok(
+    Math.abs(ai.y + ai.height / 2 - (catalog.y + catalog.height / 2)) < 2,
+    "кнопки hero выровнены по центру",
+  );
 
   await page.locator(".hero [data-assistant-open]").first().click();
   await page.locator("#assistant-panel").waitFor();
