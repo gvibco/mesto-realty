@@ -86,7 +86,7 @@ public/
   js/admin.js                админ-панель (/admin)
   js/theme.js                тёмная тема: cookie и переключатель
   js/assistant.js            чат «Подобрать с ИИ»
-  js/room-model.js           3D-модель помещения в карточке объекта
+  js/room-model.js           батчевая загрузка фото и алиас 3D-вьюера
   js/architectural-*.js      архитектурная модель: схема, геометрия, ввод
   assets/                    локальные фото, шрифт, лицензии, vendor-бандлы
 server/

@@ -6,7 +6,10 @@ const steps = [
   ["unit tests", "npm test"],
   ["formatting", "npm run format:check"],
   ["dependency audit", "npm audit --omit=dev"],
-  ["diff whitespace", "git diff --check"],
+  [
+    "diff whitespace",
+    "git diff --check && git diff --cached --check && git log --check -1",
+  ],
 ];
 
 let failed = 0;

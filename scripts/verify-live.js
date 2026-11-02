@@ -30,7 +30,12 @@ async function request(path, init = {}) {
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      return await fetch(base + path, init);
+      const response = await fetch(base + path, init);
+      if ([502, 503, 504].includes(response.status) && attempt < 3) {
+        await new Promise((done) => setTimeout(done, 2000));
+        continue;
+      }
+      return response;
     } catch (error) {
       lastError = error;
       if (attempt < 3) await new Promise((done) => setTimeout(done, 2000));
@@ -80,6 +85,7 @@ async function checkAssistant() {
   );
 
   const queries = ["Офис в Москве в аренду", "Склад в Москве"];
+  let checked = 0;
   for (const query of queries) {
     const answer = await json("/api/assistant", {
       method: "POST",
@@ -106,6 +112,7 @@ async function checkAssistant() {
       warn(`assistant query "${query}"`, "no properties returned");
       continue;
     }
+    checked += properties.length;
     const raw = JSON.stringify(answer.body);
     check(
       `assistant "${query}" leaks no contacts`,
@@ -127,6 +134,11 @@ async function checkAssistant() {
       check(`assistant property ${item.id} matches catalog`, matches);
     }
   }
+  check(
+    "assistant returns catalog matches",
+    checked > 0,
+    "no properties for any query",
+  );
 }
 
 async function main() {

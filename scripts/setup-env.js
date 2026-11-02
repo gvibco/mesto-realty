@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 const password = randomBytes(24).toString("hex");
 const secret = randomBytes(48).toString("hex");
@@ -26,4 +27,12 @@ try {
   if (err.code === "EEXIST")
     console.log(".env уже существует — оставлен без изменений.");
   else throw err;
+}
+try {
+  execFileSync("git", ["config", "core.hooksPath", ".githooks"], {
+    stdio: "ignore",
+  });
+  console.log("Git-хуки включены: core.hooksPath = .githooks");
+} catch {
+  // Не git-репозиторий или git недоступен — настройка не обязательна.
 }
