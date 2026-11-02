@@ -26,8 +26,17 @@ function check(name, condition, detail) {
 }
 
 async function request(path, init = {}) {
-  const response = await fetch(base + path, init);
-  return response;
+  // Brief retries cover container restarts during a Dockhost deployment.
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await fetch(base + path, init);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await new Promise((done) => setTimeout(done, 2000));
+    }
+  }
+  throw lastError;
 }
 
 async function json(path, init) {
