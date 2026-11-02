@@ -102,14 +102,13 @@ html[data-theme="dark"] {
   position: absolute;
   right: 0;
   bottom: 64px;
-  width: 410px;
-  max-width: calc(100vw - 40px);
-  max-height: calc(100dvh - 110px);
+  width: min(560px, calc(100vw - 40px));
+  height: min(760px, calc(100dvh - 110px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
   box-shadow: var(--shadow-2);
 }
@@ -123,17 +122,17 @@ html[data-theme="dark"] {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 18px 22px;
   border-bottom: 1px solid var(--line);
   background: var(--soft);
 }
 .assistant-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
 }
 .assistant-header p {
   margin: 3px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 .assistant-close {
@@ -146,15 +145,18 @@ html[data-theme="dark"] {
   font-size: 28px;
 }
 .assistant-log {
-  min-height: 90px;
-  max-height: 360px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 18px;
+  padding: 20px 22px;
 }
 .assistant-message {
-  margin-bottom: 12px;
-  padding: 12px 14px;
+  max-width: 92%;
+  padding: 12px 15px;
   border-radius: 8px;
   background: var(--paper);
   overflow-wrap: anywhere;
@@ -162,13 +164,12 @@ html[data-theme="dark"] {
   font-size: 14px;
 }
 .assistant-user {
-  margin-left: 26px;
+  align-self: flex-end;
   background: var(--soft);
 }
 .assistant-properties {
   display: grid;
   gap: 8px;
-  margin-bottom: 12px;
 }
 .assistant-property {
   display: grid;
@@ -192,66 +193,66 @@ html[data-theme="dark"] {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 0 18px 12px;
+  padding: 0 22px 12px;
 }
 .assistant-examples button {
   min-height: 44px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
 }
 .assistant-notice {
   margin: 0;
-  padding: 0 18px 12px;
+  padding: 0 22px 12px;
   color: var(--muted);
   font-size: 12px;
 }
 .assistant-error {
   margin: 0;
-  padding: 0 18px 12px;
+  padding: 0 22px 12px;
   color: var(--danger);
   font-size: 13px;
 }
 .assistant-form {
-  padding: 12px 18px;
+  padding: 14px 22px 10px;
   border-top: 1px solid var(--line);
 }
 .assistant-form label {
   display: block;
-  margin-bottom: 5px;
-  font-size: 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
   font-weight: 700;
 }
 .assistant-form > div {
   display: flex;
   align-items: end;
-  gap: 8px;
+  gap: 10px;
 }
 .assistant-form textarea {
   width: 100%;
   min-width: 0;
-  max-height: 100px;
-  min-height: 62px;
+  max-height: 180px;
+  min-height: 88px;
   resize: vertical;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 8px;
+  padding: 12px;
   color: var(--ink);
   background: var(--surface);
-  font-size: 14px;
+  font-size: 15px;
 }
 .assistant-form .button {
   flex-shrink: 0;
-  padding: 10px 12px;
-  font-size: 13px;
+  padding: 12px 18px;
+  font-size: 14px;
 }
 .assistant-catalog {
-  padding: 0 18px 14px;
+  padding: 0 22px 16px;
   color: var(--blue);
-  font-size: 12px;
+  font-size: 13px;
 }
 @media (max-width: 480px) {
   #assistant {
@@ -260,9 +261,27 @@ html[data-theme="dark"] {
   }
   .assistant-panel {
     width: calc(100vw - 24px);
-    max-width: none;
     bottom: 60px;
-    max-height: calc(100dvh - 88px);
+    height: calc(100dvh - 88px);
+    border-radius: 14px;
+  }
+  .assistant-header {
+    padding: 14px 18px;
+  }
+  .assistant-log {
+    padding: 16px 18px;
+  }
+  .assistant-examples,
+  .assistant-notice,
+  .assistant-error {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .assistant-form {
+    padding: 12px 18px 8px;
+  }
+  .assistant-catalog {
+    padding: 0 18px 14px;
   }
   .assistant-launch {
     padding: 12px 14px;
