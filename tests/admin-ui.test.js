@@ -97,6 +97,7 @@ before(async () => {
             company: "",
             businessRole: "owner",
             blocked: false,
+            admin: false,
             createdAt: "2026-09-01T10:00:00.000Z",
             propertyCount: 2,
           },
@@ -105,13 +106,47 @@ before(async () => {
         page: 1,
         pages: 1,
       });
+    if (pathname === "/api/admin/content-fields")
+      return json([
+        {
+          key: "heroTitle",
+          group: "Главная: первый экран",
+          label: "Заголовок (H1)",
+          max: 120,
+          min: 5,
+          multiline: false,
+        },
+        {
+          key: "heroText",
+          group: "Главная: первый экран",
+          label: "Подзаголовок",
+          max: 400,
+          min: 10,
+          multiline: true,
+        },
+        {
+          key: "commissionTitle",
+          group: "Главная: комиссия",
+          label: "Заголовок блока комиссии",
+          max: 80,
+          min: 3,
+          multiline: false,
+        },
+        {
+          key: "commissionText",
+          group: "Главная: комиссия",
+          label: "Текст блока комиссии",
+          max: 400,
+          min: 10,
+          multiline: true,
+        },
+      ]);
     if (pathname === "/api/admin/content")
       return json({
         heroTitle: "Заголовок из админки",
         heroText: "Подзаголовок из админки",
         commissionTitle: "Как мы зарабатываем",
-        commissionText:
-          "Комиссия сервиса — 1% только с успешной продажи объекта.",
+        commissionText: "Комиссия только при сделке: 1% с покупки, 40% аренды.",
       });
     if (pathname.startsWith("/api/"))
       return json({ error: "Маршрут API не найден" }, 404);
@@ -182,6 +217,7 @@ test("admin sees dashboard, listings, users and content tabs", async () => {
     .locator(".admin-item", { hasText: "Обычный Пользователь" })
     .waitFor();
   assert.ok(await page.locator("[data-block]").first().isVisible());
+  assert.ok(await page.locator("[data-promote]").first().isVisible());
 
   await page.goto(base() + "/admin?tab=content");
   const input = page.locator('input[name="heroTitle"]');

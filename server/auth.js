@@ -7,9 +7,12 @@ import { loginSchema, registrationSchema, parse } from "./validation.js";
 import { newToken, startSession } from "./security.js";
 
 export const userColumns =
-  "id, name, email, phone, bio, avatar_filename, company, business_role, is_blocked";
-const asAdmin = (email) =>
-  !!config.adminEmail && String(email).toLowerCase() === config.adminEmail;
+  "id, name, email, phone, bio, avatar_filename, company, business_role, is_blocked, is_admin";
+const asAdmin = (user) =>
+  !!user &&
+  (user.is_admin ||
+    (!!config.adminEmail &&
+      String(user.email).toLowerCase() === config.adminEmail));
 export function privateUser(row) {
   return row
     ? {
@@ -60,7 +63,7 @@ export function authRouter() {
     }
     res.json({
       user: privateUser(user),
-      isAdmin: asAdmin(user.email),
+      isAdmin: asAdmin(user),
       csrfToken: req.session.csrfToken,
     });
   });
@@ -86,7 +89,7 @@ export function authRouter() {
     await startSession(req, row.id);
     res.status(201).json({
       user: privateUser(row),
-      isAdmin: asAdmin(row.email),
+      isAdmin: asAdmin(row),
       csrfToken: req.session.csrfToken,
     });
   });
@@ -109,7 +112,7 @@ export function authRouter() {
     await startSession(req, row.id);
     res.json({
       user: privateUser(row),
-      isAdmin: asAdmin(row.email),
+      isAdmin: asAdmin(row),
       csrfToken: req.session.csrfToken,
     });
   });

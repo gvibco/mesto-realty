@@ -19,10 +19,19 @@ import {
   navigate,
   errors,
   busy,
+  commissionFor,
+  commissionPercent,
 } from "./core.js";
 import { initAssistant } from "./assistant.js";
+import {
+  applyContent,
+  applyContentFromServer,
+  contentValue,
+} from "./content.js";
 const main = document.querySelector("#main");
+const contentReady = applyContentFromServer();
 initAssistant();
+const refreshContent = () => contentReady.then(() => applyContent(main));
 // Session loads in parallel with the first render so LCP content does not
 // wait for the network. Pages await sessionReady before user-specific API
 // calls (favorites, account data).
@@ -64,7 +73,7 @@ async function home() {
     free_purpose: "Для вашего формата",
     commercial_land: "Для развития проекта",
   };
-  main.innerHTML = `<div class="container hero-wrap"><section class="hero"><div class="hero-content"><div class="eyebrow">Коммерческая недвижимость для бизнеса</div><h1 id="hero-title">Подберём помещение под ваш бизнес за 48 часов — платите только 1% при покупке</h1><p id="hero-text">Офисы, склады и торговые площади напрямую от собственников. Размещение и аренда — бесплатно, комиссия 1% — только когда сделка продажи состоялась.</p><a class="hero-link arrow-link" href="/catalog">Открыть каталог</a></div><img class="hero-image" src="/assets/hero.webp" srcset="/assets/hero-800.webp 800w, /assets/hero-1200.webp 1200w, /assets/hero-1600.webp 1600w" sizes="(max-width: 800px) 100vw, 50vw" alt="Архитектура современного делового центра" width="1600" height="1067" fetchpriority="high"></section><form class="search-panel" action="/catalog"><div class="deal-tabs"><label><input type="radio" name="deal" value="rent" checked>Аренда</label><label><input type="radio" name="deal" value="sale">Покупка</label></div><div class="search-row">${field("q", "Город или район", "", 'placeholder="Например, Москва"')}${select("category", "Назначение объекта", options)}${field("maxPrice", "Бюджет до, ₽", "", 'type="number" min="1" step="0.01" placeholder="Не ограничен"')}<button class="button arrow-link" type="submit">Найти объект</button></div></form><section class="category-section"><div class="section-heading"><h2>Под задачи вашего бизнеса</h2></div><nav class="categories" aria-label="Назначение объекта">${Object.entries(
+  main.innerHTML = `<div class="container hero-wrap"><section class="hero"><div class="hero-content"><div class="eyebrow" data-content="heroEyebrow">Коммерческая недвижимость для бизнеса</div><h1 id="hero-title" data-content="heroTitle">Помещение для бизнеса — за 48 часов</h1><p id="hero-text" data-content="heroText">Офисы, склады и торговые площади от собственников. Комиссия только при сделке: 1% с покупки, 40% месячной аренды.</p><div class="hero-actions"><button class="button hero-ai" type="button" data-assistant-open><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3.5 13.8 9l5.5 1.8-5.5 1.8L12 18l-1.8-5.4L4.7 10.8 10.2 9 12 3.5Z"/><path d="M19 16.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z"/></svg><span data-content="heroAssistantCta">Подобрать с ИИ</span></button><a class="hero-link arrow-link" href="/catalog" data-content="heroCatalogCta">Открыть каталог</a></div></div><img class="hero-image" src="/assets/hero.webp" srcset="/assets/hero-800.webp 800w, /assets/hero-1200.webp 1200w, /assets/hero-1600.webp 1600w" sizes="(max-width: 800px) 100vw, 50vw" alt="Архитектура современного делового центра" width="1600" height="1067" fetchpriority="high"></section><form class="search-panel" action="/catalog"><div class="deal-tabs"><label><input type="radio" name="deal" value="rent" checked>Аренда</label><label><input type="radio" name="deal" value="sale">Покупка</label></div><div class="search-row">${field("q", "Город или район", "", 'placeholder="Например, Москва"')}${select("category", "Назначение объекта", options)}${field("maxPrice", "Бюджет до, ₽", "", 'type="number" min="1" step="0.01" placeholder="Не ограничен"')}<button class="button arrow-link" type="submit">Найти объект</button></div><p class="search-hint"><span data-content="searchHint">ИИ-помощник подберёт лучшие объекты под ваш запрос — город, бюджет, площадь и назначение</span><button type="button" class="link-button" data-assistant-open data-content="searchHintCta">Подобрать с ИИ</button></p></form><section class="category-section"><div class="section-heading"><h2 data-content="categoriesTitle">Под задачу бизнеса</h2></div><nav class="categories" aria-label="Назначение объекта">${Object.entries(
     categories,
   )
     .map(
@@ -73,7 +82,7 @@ async function home() {
     )
     .join(
       "",
-    )}</nav></section><section class="listing-section"><div class="section-heading"><div><h2>Новые объекты</h2><p>Свежие предложения коммерческой недвижимости</p></div><a class="arrow-link" href="/catalog">Весь каталог</a></div><div id="home-listings" class="grid"><div class="loading">Загружаем объекты…</div></div></section><section class="city-section"><div class="section-heading"><div><h2>Где будет работать ваш бизнес?</h2><p>Посмотрите предложения в интересующем городе</p></div></div><div class="city-grid">${["Москва", "Санкт-Петербург", "Казань", "Сочи"].map((city) => `<a class="city-link arrow-link" href="/catalog?q=${encodeURIComponent(city)}">${city}</a>`).join("")}</div></section><section class="commission-section"><div class="section-heading"><div><h2 id="commission-title">Как мы зарабатываем</h2><p id="commission-text">Комиссия сервиса — 1% только с успешной продажи объекта. Размещение объявлений и аренда — бесплатно.</p></div></div><div class="commission-facts"><div class="commission-fact"><b>0 ₽</b><span>размещение объявлений</span></div><div class="commission-fact"><b>0 ₽</b><span>аренда — комиссии нет</span></div><div class="commission-fact"><b>1%</b><span>только с состоявшейся продажи</span></div></div></section><section class="publish-banner"><div><span class="banner-label">Собственникам и брокерам</span><h2>Ваш объект. Следующий бизнес.</h2><p>Добавьте параметры, условия сделки и фотографии.<br>Получайте обращения от заинтересованных компаний.</p></div><a class="button arrow-link" href="/publish">Разместить объект</a></section></div>`;
+    )}</nav></section><section class="listing-section"><div class="section-heading"><div><h2 data-content="listingsTitle">Новые объекты</h2><p data-content="listingsText">Свежие предложения с ценой и площадью</p></div><a class="arrow-link" href="/catalog" data-content="listingsLink">Весь каталог</a></div><div id="home-listings" class="grid"><div class="loading">Загружаем объекты…</div></div></section><section class="city-section"><div class="section-heading"><div><h2 data-content="citiesTitle">Выберите город</h2><p data-content="citiesText">Объекты с ценой и площадью в вашем городе</p></div></div><div class="city-grid">${["Москва", "Санкт-Петербург", "Казань", "Сочи"].map((city) => `<a class="city-link arrow-link" href="/catalog?q=${encodeURIComponent(city)}">${city}</a>`).join("")}</div></section><section class="commission-section"><div class="section-heading"><div><h2 id="commission-title" data-content="commissionTitle">Как мы зарабатываем</h2><p id="commission-text" data-content="commissionText">Комиссия только при сделке: 1% с покупки, 40% месячной аренды. Размещение объявлений бесплатно.</p></div></div><div class="commission-facts"><div class="commission-fact"><b>0 ₽</b><span data-content="commissionFactListings">размещение объявлений</span></div><div class="commission-fact"><b>${commissionPercent("rent")}%</b><span data-content="commissionFactRent">месячной аренды</span></div><div class="commission-fact"><b>${commissionPercent("sale")}%</b><span data-content="commissionFactSale">с покупки</span></div></div></section><section class="publish-banner"><div><span class="banner-label" data-content="bannerLabel">Собственникам и брокерам</span><h2 data-content="bannerTitle">Разместите объект бесплатно</h2><p data-content="bannerText">Получайте обращения от компаний. Добавьте параметры, условия сделки и фотографии.</p></div><a class="button arrow-link" href="/publish" data-content="bannerCta">Разместить объект</a></section></div>`;
 
   try {
     await sessionReady;
@@ -91,24 +100,9 @@ async function home() {
     document.querySelector("#home-listings").innerHTML =
       `<div class="error-panel full"><p>${esc(e.message)}</p><a class="button secondary" href="/">Повторить</a></div>`;
   }
-  // Тексты главной могут быть отредактированы в админ-панели: дефолты уже
-  // в разметке (нет скачков LCP), при отличии заменяем из /api/content.
-  api("/content")
-    .then((content) => {
-      if ((location.pathname.replace(/\/$/, "") || "/") !== "/") return;
-      for (const [elementId, value] of [
-        ["hero-title", content.heroTitle],
-        ["hero-text", content.heroText],
-        ["commission-title", content.commissionTitle],
-        ["commission-text", content.commissionText],
-      ]) {
-        const el = document.getElementById(elementId);
-        if (el && value) el.textContent = value;
-      }
-    })
-    .catch(() => {
-      /* остаются тексты по умолчанию */
-    });
+  // Тексты редактируются в админ-панели: дефолты уже в разметке (нет скачков
+  // LCP), при отличии заменяем из /api/content.
+  await refreshContent();
 }
 async function catalog() {
   const q = new URLSearchParams(location.search);
@@ -117,7 +111,7 @@ async function catalog() {
   if (q.has("category") && !Object.hasOwn(categories, q.get("category")))
     q.delete("category");
   history.replaceState({}, "", "/catalog" + (q.size ? "?" + q : ""));
-  main.innerHTML = `<div class="container page"><div class="breadcrumb"><a href="/">Главная</a> / Каталог</div><div class="page-intro"><h1>Коммерческая недвижимость</h1><p>Найдите объект по назначению, площади и условиям сделки</p></div><div class="catalog-layout"><form class="filters" action="/catalog"><h3 class="full">Параметры поиска</h3>${field("q", "Город, район или адрес", q.get("q"), 'placeholder="Например, Москва"')}${select("deal", "Сделка", { "": "Любая", sale: "Покупка", rent: "Аренда" }, q.get("deal"))}${select("category", "Назначение объекта", options, q.get("category"))}<div class="pair">${field("minPrice", "Цена от, ₽", q.get("minPrice"), 'type="number" min="0" step="0.01"')}${field("maxPrice", "Цена до, ₽", q.get("maxPrice"), 'type="number" min="0" step="0.01"')}</div><div class="pair">${field("minArea", "Площадь от, м²", q.get("minArea"), 'type="number" min="0" step="0.01"')}${field("maxArea", "До, м²", q.get("maxArea"), 'type="number" min="0" step="0.01"')}</div>${select("buildingClass", "Класс здания", { "": "Любой", A: "A", B: "B", C: "C" }, q.get("buildingClass"))}${field("minCeilingHeight", "Потолки от, м", q.get("minCeilingHeight"), 'type="number" min="0.01" max="50" step="0.01"')}${field("minPowerKw", "Мощность от, кВт", q.get("minPowerKw"), 'type="number" min="0.01" max="100000" step="0.01"')}${select("parking", "Парковка", { "": "Не важно", true: "Есть", false: "Нет" }, q.get("parking"))}<input type="hidden" name="sort" value="${esc(q.get("sort") || "newest")}">${q.get("owner") ? `<input type="hidden" name="owner" value="${esc(q.get("owner"))}">` : ""}<button class="button" type="submit">Показать объявления</button><a class="muted" href="/catalog">Сбросить фильтры</a></form><section class="catalog-content"><div class="result-bar"><span id="result-count">Ищем объявления…</span><label> <span class="sr-only">Сортировка</span><select id="sort" aria-label="Сортировка"><option value="newest">Сначала новые</option><option value="price_asc">Сначала дешевле</option><option value="price_desc">Сначала дороже</option></select></label></div><div id="results" class="grid"><div class="loading">Загрузка…</div></div><nav class="pagination" aria-label="Страницы"></nav></section></div></div>`;
+  main.innerHTML = `<div class="container page"><div class="breadcrumb"><a href="/">Главная</a> / Каталог</div><div class="page-intro"><h1 data-content="catalogTitle">Коммерческая недвижимость</h1><p data-content="catalogText">Офисы, склады и торговые площади — фильтры по цене и площади</p></div><div class="catalog-layout"><form class="filters" action="/catalog"><h3 class="full" data-content="catalogFiltersTitle">Параметры поиска</h3>${field("q", "Город, район или адрес", q.get("q"), 'placeholder="Например, Москва"')}${select("deal", "Сделка", { "": "Любая", sale: "Покупка", rent: "Аренда" }, q.get("deal"))}${select("category", "Назначение объекта", options, q.get("category"))}<div class="pair">${field("minPrice", "Цена от, ₽", q.get("minPrice"), 'type="number" min="0" step="0.01"')}${field("maxPrice", "Цена до, ₽", q.get("maxPrice"), 'type="number" min="0" step="0.01"')}</div><div class="pair">${field("minArea", "Площадь от, м²", q.get("minArea"), 'type="number" min="0" step="0.01"')}${field("maxArea", "До, м²", q.get("maxArea"), 'type="number" min="0" step="0.01"')}</div>${select("buildingClass", "Класс здания", { "": "Любой", A: "A", B: "B", C: "C" }, q.get("buildingClass"))}${field("minCeilingHeight", "Потолки от, м", q.get("minCeilingHeight"), 'type="number" min="0.01" max="50" step="0.01"')}${field("minPowerKw", "Мощность от, кВт", q.get("minPowerKw"), 'type="number" min="0.01" max="100000" step="0.01"')}${select("parking", "Парковка", { "": "Не важно", true: "Есть", false: "Нет" }, q.get("parking"))}<input type="hidden" name="sort" value="${esc(q.get("sort") || "newest")}">${q.get("owner") ? `<input type="hidden" name="owner" value="${esc(q.get("owner"))}">` : ""}<button class="button" type="submit" data-content="catalogSubmit">Показать объявления</button><a class="muted" href="/catalog" data-content="catalogReset">Сбросить фильтры</a></form><section class="catalog-content"><div class="result-bar"><span id="result-count">Ищем объявления…</span><label> <span class="sr-only">Сортировка</span><select id="sort" aria-label="Сортировка"><option value="newest">Сначала новые</option><option value="price_asc">Сначала дешевле</option><option value="price_desc">Сначала дороже</option></select></label></div><div id="results" class="grid"><div class="loading">Загрузка…</div></div><nav class="pagination" aria-label="Страницы"></nav></section></div></div>`;
   document.querySelector("#sort").value = q.get("sort") || "newest";
   document.querySelector("#sort").onchange = (e) => {
     q.set("sort", e.target.value);
@@ -125,6 +119,7 @@ async function catalog() {
     navigate("/catalog?" + q);
   };
   await sessionReady;
+  await refreshContent();
   const data = await api("/properties?" + q);
   document.querySelector("#result-count").textContent =
     `Найдено объявлений: ${data.total}`;
@@ -132,10 +127,13 @@ async function catalog() {
   results.innerHTML = data.items.length
     ? data.items.map((p) => card(p)).join("")
     : empty(
-        "Пока ничего не нашлось",
-        "Попробуйте увеличить бюджет или выбрать другой район.",
+        contentValue("catalogEmptyTitle", "Пока ничего не нашлось"),
+        contentValue(
+          "catalogEmptyText",
+          "Попробуйте увеличить бюджет или выбрать другой район.",
+        ),
         "/catalog",
-        "Сбросить фильтры",
+        contentValue("catalogReset", "Сбросить фильтры"),
       );
   for (let p = 1; p <= data.pages; p++) {
     if (
@@ -167,7 +165,7 @@ async function detail(id) {
   } = await api("/properties/" + encodeURIComponent(id));
   if (location.pathname !== requestedPath) return;
   document.title = p.title + " | Место Бизнес";
-  main.innerHTML = `<div class="container page"><div class="breadcrumb"><a href="/">Главная</a> / <a href="/catalog">Каталог</a> / ${esc(p.city)}</div><h1>${esc(p.title)}</h1><p class="muted detail-address">${esc(p.city)}, ${esc(p.district ? p.district + ", " : "")}${esc(p.address)}</p><div class="detail-layout"><div><img class="gallery-main" src="${safeImage(images[0]?.url)}" alt="${esc(p.title)}" width="900" height="620">${images.length > 1 ? `<div class="thumbnails" aria-label="Фотографии">${images.map((im, i) => `<button class="${i === 0 ? "selected" : ""}" data-photo="${safeImage(im.url)}" aria-label="Фото ${i + 1}"><img src="${safeImage(im.url)}" alt="Фото ${i + 1}" width="100" height="72"></button>`).join("")}</div>` : ""}<div class="detail-facts">${propertyFacts(p)}</div><h2>Об объекте</h2><p class="description">${esc(p.description)}</p><div id="room-model-host" hidden></div></div><aside class="contact-panel"><div class="detail-price">${money(p.price)}${p.deal === "rent" ? '<span class="muted"> / месяц</span>' : ""}</div><p class="muted">${rate(p)}</p><p class="muted">${p.tax && p.tax !== "unspecified" ? taxLabels[p.tax] : "НДС: не указан"}</p>${p.deal === "sale" ? `<p class="commission-note">Комиссия сервиса: 1% — ${money(Math.round(Number(p.price) * 0.01))}</p>` : ""}${p.status !== "published" ? `<p class="muted">${p.status === "draft" ? "Черновик" : "Объявление в архиве"}</p>` : ""}<button id="reveal" class="button">Показать телефон</button><button class="button secondary" id="detail-favorite">${p.isFavorite ? "Убрать из избранного" : "♡ Сохранить в избранное"}</button><div class="owner">${owner.avatar ? `<img class="avatar" src="${safeImage(owner.avatar)}" alt="${esc(owner.name)}">` : `<span class="avatar">${esc(owner.name?.[0] || "М")}</span>`}<div><strong>${esc(owner.company || owner.name)}</strong><p>${esc(businessRoles[owner.businessRole] || "Собственник")}</p>${owner.company || (p.contactName && p.contactName !== owner.name) ? `<p>${esc(p.contactName || owner.name)}</p>` : ""}</div></div>${owner.bio ? `<p class="muted owner-bio">${esc(owner.bio)}</p>` : ""}<a class="button secondary" href="/catalog?owner=${encodeURIComponent(owner.id)}">Объявления автора ↗</a>${state.user?.id === p.ownerId ? `<a class="button secondary" href="/edit/${encodeURIComponent(p.id)}">Редактировать</a>` : ""}</aside></div>${otherProperties?.length ? `<section class="detail-more"><div class="section-heading"><h2>Другие объявления автора</h2></div><div class="grid">${otherProperties.map((item) => card(item)).join("")}</div></section>` : ""}</div>`;
+  main.innerHTML = `<div class="container page"><div class="breadcrumb"><a href="/">Главная</a> / <a href="/catalog">Каталог</a> / ${esc(p.city)}</div><h1>${esc(p.title)}</h1><p class="muted detail-address">${esc(p.city)}, ${esc(p.district ? p.district + ", " : "")}${esc(p.address)}</p><div class="detail-layout"><div><img class="gallery-main" src="${safeImage(images[0]?.url)}" alt="${esc(p.title)}" width="900" height="620">${images.length > 1 ? `<div class="thumbnails" aria-label="Фотографии">${images.map((im, i) => `<button class="${i === 0 ? "selected" : ""}" data-photo="${safeImage(im.url)}" aria-label="Фото ${i + 1}"><img src="${safeImage(im.url)}" alt="Фото ${i + 1}" width="100" height="72"></button>`).join("")}</div>` : ""}<div class="detail-facts">${propertyFacts(p)}</div><h2 data-content="detailAboutTitle">Об объекте</h2><p class="description">${esc(p.description)}</p><div id="room-model-host" hidden></div></div><aside class="contact-panel"><div class="detail-price">${money(p.price)}${p.deal === "rent" ? '<span class="muted"> / месяц</span>' : ""}</div><p class="muted">${rate(p)}</p><p class="muted">${p.tax && p.tax !== "unspecified" ? taxLabels[p.tax] : "НДС: не указан"}</p>${p.deal === "rent" ? `<p class="commission-note">Комиссия сервиса: ${commissionPercent("rent")}% месячной аренды — ${money(commissionFor(p))}</p>` : `<p class="commission-note">Комиссия сервиса: ${commissionPercent("sale")}% — ${money(commissionFor(p))}</p>`}${p.status !== "published" ? `<p class="muted">${p.status === "draft" ? "Черновик" : "Объявление в архиве"}</p>` : ""}<button id="reveal" class="button">Показать телефон</button><button class="button secondary" id="detail-favorite">${p.isFavorite ? "Убрать из избранного" : "♡ Сохранить в избранное"}</button><div class="owner">${owner.avatar ? `<img class="avatar" src="${safeImage(owner.avatar)}" alt="${esc(owner.name)}">` : `<span class="avatar">${esc(owner.name?.[0] || "М")}</span>`}<div><strong>${esc(owner.company || owner.name)}</strong><p>${esc(businessRoles[owner.businessRole] || "Собственник")}</p>${owner.company || (p.contactName && p.contactName !== owner.name) ? `<p>${esc(p.contactName || owner.name)}</p>` : ""}</div></div>${owner.bio ? `<p class="muted owner-bio">${esc(owner.bio)}</p>` : ""}<a class="button secondary" href="/catalog?owner=${encodeURIComponent(owner.id)}">Объявления автора ↗</a>${state.user?.id === p.ownerId ? `<a class="button secondary" href="/edit/${encodeURIComponent(p.id)}">Редактировать</a>` : ""}</aside></div>${otherProperties?.length ? `<section class="detail-more"><div class="section-heading"><h2>Другие объявления автора</h2></div><div class="grid">${otherProperties.map((item) => card(item)).join("")}</div></section>` : ""}</div>`;
   if (p.category !== "commercial_land") {
     const { mountRoomModel } = await import("./room-model.js");
     mountRoomModel(
@@ -222,6 +220,7 @@ async function detail(id) {
     }
   };
   wireFavorites();
+  await refreshContent();
 }
 document.addEventListener("submit", (e) => {
   if (e.target.matches('form[action="/catalog"]')) {

@@ -162,10 +162,31 @@ async function main() {
   check(
     "editable home content",
     content.response.status === 200 &&
-      ["heroTitle", "heroText", "commissionTitle", "commissionText"].every(
-        (key) => typeof content.body?.[key] === "string",
-      ),
+      [
+        "heroTitle",
+        "heroText",
+        "commissionTitle",
+        "commissionText",
+        "heroAssistantCta",
+        "searchHint",
+        "commissionFactRent",
+        "metaTitle",
+      ].every((key) => typeof content.body?.[key] === "string"),
   );
+  const publicCopy = [
+    content.body?.heroTitle,
+    content.body?.heroText,
+    content.body?.commissionText,
+  ].join(" ");
+  check(
+    "commission copy is current",
+    !/аренда\s*[—-]\s*бесплатно|комиссии нет|только 1%\s*при\s*(покупке|сделке)/i.test(
+      publicCopy,
+    ),
+    "stale rent-free or sale-only commission copy",
+  );
+  if (!/40%/.test(publicCopy))
+    warn("commission copy", "40% rent commission is not mentioned");
 
   for (const asset of [
     "/styles.css",

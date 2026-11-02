@@ -1,44 +1,38 @@
 import { Router } from "express";
 import { z } from "zod";
-import { pool } from "./db.js";
+import { pool, transaction } from "./db.js";
+import { config } from "./config.js";
 import { requireAdmin, notFound } from "./security.js";
 import { parse, id } from "./validation.js";
+import { CONTENT_FIELDS, DEFAULT_CONTENT } from "./content-fields.js";
 
-export const DEFAULT_CONTENT = {
-  heroTitle:
-    "Подберём помещение под ваш бизнес за 48 часов — платите только 1% при покупке",
-  heroText:
-    "Офисы, склады и торговые площади напрямую от собственников. Размещение и аренда — бесплатно, комиссия 1% — только когда сделка продажи состоялась.",
-  commissionTitle: "Как мы зарабатываем",
-  commissionText:
-    "Комиссия сервиса — 1% только с успешной продажи объекта. Размещение объявлений и аренда — бесплатно.",
-};
-const contentKeys = Object.keys(DEFAULT_CONTENT);
+const contentKeys = CONTENT_FIELDS.map((field) => field.key);
 const contentSchema = z
-  .object({
-    heroTitle: z
-      .string()
-      .trim()
-      .min(5, "Заголовок: минимум 5 символов")
-      .max(300, "Заголовок: максимум 300 символов"),
-    heroText: z
-      .string()
-      .trim()
-      .min(10, "Подзаголовок: минимум 10 символов")
-      .max(1000, "Подзаголовок: максимум 1000 символов"),
-    commissionTitle: z
-      .string()
-      .trim()
-      .min(3, "Название блока: минимум 3 символа")
-      .max(300, "Название блока: максимум 300 символов"),
-    commissionText: z
-      .string()
-      .trim()
-      .min(10, "Текст блока: минимум 10 символов")
-      .max(1000, "Текст блока: максимум 1000 символов"),
-  })
+  .object(
+    Object.fromEntries(
+      CONTENT_FIELDS.map((field) => [
+        field.key,
+        z
+          .string()
+          .trim()
+          .min(
+            field.min ?? 1,
+            `${field.label}: минимум ${field.min ?? 1} символов`,
+          )
+          .max(field.max, `${field.label}: максимум ${field.max} символов`),
+      ]),
+    ),
+  )
   .strict();
-const blockedSchema = z.object({ blocked: z.boolean() }).strict();
+const userPatchSchema = z
+  .object({
+    blocked: z.boolean().optional(),
+    admin: z.boolean().optional(),
+  })
+  .strict()
+  .refine((data) => data.blocked !== undefined || data.admin !== undefined, {
+    message: "Нет изменений",
+  });
 const statuses = new Set(["draft", "published", "archived"]);
 const deals = new Set(["sale", "rent"]);
 const pageParams = (query) => {
@@ -144,7 +138,7 @@ export function adminRouter() {
     );
     const rows = (
       await pool.query(
-        `SELECT u.id,u.name,u.email,u.company,u.business_role,u.is_blocked,u.created_at,
+        `SELECT u.id,u.name,u.email,u.company,u.business_role,u.is_blocked,u.is_admin,u.created_at,
           (SELECT count(*)::int FROM properties p WHERE p.owner_id=u.id) AS property_count
          FROM users u ORDER BY u.created_at DESC,u.id DESC LIMIT $1 OFFSET $2`,
         [limit, offset],
@@ -158,6 +152,11 @@ export function adminRouter() {
         company: r.company,
         businessRole: r.business_role,
         blocked: r.is_blocked,
+        admin:
+          r.is_admin ||
+          (!!config.adminEmail && r.email.toLowerCase() === config.adminEmail),
+        bootstrap:
+          !!config.adminEmail && r.email.toLowerCase() === config.adminEmail,
         createdAt: r.created_at,
         propertyCount: r.property_count,
       })),
@@ -168,35 +167,81 @@ export function adminRouter() {
   });
 
   router.patch("/users/:id", async (req, res) => {
-    const data = parse(blockedSchema, req.body);
+    const data = parse(userPatchSchema, req.body);
     const userId = id(req.params.id);
-    if (userId === req.session.userId)
-      return res.status(422).json({ error: "Нельзя заблокировать себя" });
     const row = (
-      await pool.query("SELECT id,is_blocked FROM users WHERE id=$1", [userId])
+      await pool.query(
+        "SELECT id,email,is_blocked,is_admin FROM users WHERE id=$1",
+        [userId],
+      )
     ).rows[0];
     if (!row) throw notFound();
+    const isSelf = userId === req.session.userId;
+    const isBootstrap =
+      !!config.adminEmail && row.email.toLowerCase() === config.adminEmail;
+    // Все проверки выполняются до записи, чтобы 422 не оставлял частичных
+    // изменений.
+    if (data.blocked && isSelf)
+      return res.status(422).json({ error: "Нельзя заблокировать себя" });
+    if (data.blocked && isBootstrap)
+      return res
+        .status(422)
+        .json({ error: "Нельзя заблокировать основного администратора" });
+    if (data.admin !== undefined && isSelf)
+      return res
+        .status(422)
+        .json({ error: "Нельзя изменить собственные права админа" });
+    if (data.admin === false && isBootstrap)
+      return res.status(422).json({
+        error: "Нельзя снять права с основного администратора",
+      });
     if (data.blocked && !row.is_blocked)
       await pool.query(
         "DELETE FROM sessions WHERE sess::jsonb->>'userId'=$1::text",
         [String(userId)],
       );
-    await pool.query("UPDATE users SET is_blocked=$2 WHERE id=$1", [
-      userId,
-      data.blocked,
-    ]);
-    res.json({ blocked: data.blocked });
+    if (data.blocked !== undefined)
+      await pool.query("UPDATE users SET is_blocked=$2 WHERE id=$1", [
+        userId,
+        data.blocked,
+      ]);
+    if (data.admin !== undefined)
+      await pool.query("UPDATE users SET is_admin=$2 WHERE id=$1", [
+        userId,
+        data.admin,
+      ]);
+    res.json({
+      blocked: data.blocked ?? row.is_blocked,
+      admin: data.admin ?? (row.is_admin || isBootstrap),
+      bootstrap: isBootstrap,
+    });
   });
 
   router.get("/content", async (req, res) => res.json(await readContent()));
 
+  router.get("/content-fields", (req, res) =>
+    res.json(
+      CONTENT_FIELDS.map(({ key, group, label, max, min, multiline }) => ({
+        key,
+        group,
+        label,
+        max,
+        min: min ?? 1,
+        multiline: !!multiline,
+      })),
+    ),
+  );
+
   router.put("/content", async (req, res) => {
     const data = parse(contentSchema, req.body);
-    for (const key of contentKeys)
-      await pool.query(
-        "INSERT INTO site_settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=$2,updated_at=now()",
-        [key, data[key]],
+    await transaction(async (client) => {
+      await client.query(
+        `INSERT INTO site_settings(key,value)
+         SELECT * FROM unnest($1::text[], $2::text[])
+         ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()`,
+        [contentKeys, contentKeys.map((key) => data[key])],
       );
+    });
     res.json(await readContent());
   });
 

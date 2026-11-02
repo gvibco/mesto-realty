@@ -61,6 +61,8 @@ test("light by default, dark via cookie, toggle flips and persists", async () =>
   const lightBg = await page.evaluate(
     () => getComputedStyle(document.body).backgroundColor,
   );
+  assert.ok(await page.locator(".theme-icon-moon").isVisible());
+  assert.equal(await page.locator(".theme-icon-sun").isVisible(), false);
 
   await page
     .context()
@@ -73,6 +75,7 @@ test("light by default, dark via cookie, toggle flips and persists", async () =>
   const darkBg = await page.evaluate(
     () => getComputedStyle(document.body).backgroundColor,
   );
+  assert.ok(await page.locator(".theme-icon-sun").isVisible());
   assert.ok(
     luminance(darkBg) < luminance(lightBg),
     "тёмный фон должен быть темнее светлого",

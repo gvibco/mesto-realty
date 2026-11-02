@@ -1,6 +1,36 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { safeReturnPath, esc, safeImage, select } from "../public/js/core.js";
+import { readFile } from "node:fs/promises";
+import {
+  safeReturnPath,
+  esc,
+  safeImage,
+  select,
+  empty,
+} from "../public/js/core.js";
+
+test("number inputs hide native spinner arrows", async () => {
+  const css = await readFile(
+    new URL("../public/styles.css", import.meta.url),
+    "utf8",
+  );
+  assert.match(css, /input\[type="number"\]\s*\{[^}]*appearance:\s*textfield/s);
+  assert.match(
+    css,
+    /::-webkit-inner-spin-button[\s\S]*?-webkit-appearance:\s*none/,
+  );
+});
+
+test("empty-state label and link come from content and are escaped", () => {
+  const html = empty(
+    "Ничего нет",
+    "Текст",
+    "/catalog",
+    "<img src=x onerror=alert(1)>",
+  );
+  assert.ok(!html.includes("<img src=x"));
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+});
 
 test("empty filters stay unselected when option keys are numeric", () => {
   assert.match(

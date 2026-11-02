@@ -20,10 +20,11 @@ import {
 } from "./core.js";
 import { uploadPhotoBatches } from "./room-model.js";
 import { mountArchitecturalInputs } from "./architectural-inputs.js";
+import { applyContentFromServer } from "./content.js";
 const main = document.querySelector("#main");
 export function authPage(mode) {
   const register = mode === "register";
-  main.innerHTML = `<div class="auth-wrap"><div class="eyebrow">Место Бизнес</div><h1>${register ? "Аккаунт для бизнеса" : "С возвращением"}</h1><p>${register ? "Создайте аккаунт, чтобы сохранять и публиковать объявления." : "Войдите, чтобы вернуться к вашим объявлениям."}</p><form id="auth-form" class="stack">${register ? field("name", "Ваше имя", "", 'required minlength="2" maxlength="80" autocomplete="name"') : ""}${register ? field("company", "Компания", "", 'maxlength="120" autocomplete="organization" placeholder="Необязательно"') + select("businessRole", "Ваша роль", businessRoles, "owner") : ""}${field("email", "Электронная почта", "", 'required type="email" autocomplete="email" maxlength="254" placeholder="you@example.ru"')}${field("password", "Пароль", "", 'required type="password" minlength="10" maxlength="72" autocomplete="' + (register ? "new-password" : "current-password") + '"' + (register ? ' placeholder="Не менее 10 символов"' : ""))}${register ? field("confirmPassword", "Повторите пароль", "", 'required type="password" minlength="10" autocomplete="new-password"') : ""}<div class="form-error" tabindex="-1" role="alert"></div><button class="button" type="submit">${register ? "Создать аккаунт" : "Войти"}</button><p class="form-note">${register ? "Уже есть аккаунт?" : "Ещё нет аккаунта?"} <a href="/${register ? "login" : "register"}${location.search}">${register ? "Войти" : "Зарегистрироваться"}</a></p></form></div>`;
+  main.innerHTML = `<div class="auth-wrap"><div class="eyebrow">Место Бизнес</div><h1 data-content="${register ? "authRegisterTitle" : "authLoginTitle"}">${register ? "Аккаунт для бизнеса" : "Вход в кабинет"}</h1><p data-content="${register ? "authRegisterText" : "authLoginText"}">${register ? "Создайте аккаунт, чтобы сохранять и публиковать объявления." : "Войдите, чтобы вернуться к вашим объявлениям."}</p><form id="auth-form" class="stack">${register ? field("name", "Ваше имя", "", 'required minlength="2" maxlength="80" autocomplete="name"') : ""}${register ? field("company", "Компания", "", 'maxlength="120" autocomplete="organization" placeholder="Необязательно"') + select("businessRole", "Ваша роль", businessRoles, "owner") : ""}${field("email", "Электронная почта", "", 'required type="email" autocomplete="email" maxlength="254" placeholder="you@example.ru"')}${field("password", "Пароль", "", 'required type="password" minlength="10" maxlength="72" autocomplete="' + (register ? "new-password" : "current-password") + '"' + (register ? ' placeholder="Не менее 10 символов"' : ""))}${register ? field("confirmPassword", "Повторите пароль", "", 'required type="password" minlength="10" autocomplete="new-password"') : ""}<div class="form-error" tabindex="-1" role="alert"></div><button class="button" type="submit">${register ? "Создать аккаунт" : "Войти"}</button><p class="form-note">${register ? "Уже есть аккаунт?" : "Ещё нет аккаунта?"} <a href="/${register ? "login" : "register"}${location.search}">${register ? "Войти" : "Зарегистрироваться"}</a></p></form></div>`;
   document.querySelector("#auth-form").onsubmit = async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -44,6 +45,7 @@ export function authPage(mode) {
       busy(form, false);
     }
   };
+  applyContentFromServer();
 }
 export async function accountPage() {
   if (!authRequired()) return;

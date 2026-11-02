@@ -43,11 +43,15 @@ export async function startSession(req, userId) {
 export const notFound = () =>
   Object.assign(new Error("Объект не найден"), { status: 404 });
 export async function isAdminUser(userId) {
-  if (!userId || !config.adminEmail) return false;
+  if (!userId) return false;
   const row = (
-    await pool.query("SELECT email FROM users WHERE id=$1", [userId])
+    await pool.query("SELECT email,is_admin FROM users WHERE id=$1", [userId])
   ).rows[0];
-  return !!row && row.email.toLowerCase() === config.adminEmail;
+  return (
+    !!row &&
+    (row.is_admin ||
+      (!!config.adminEmail && row.email.toLowerCase() === config.adminEmail))
+  );
 }
 export async function requireAdmin(req, res, next) {
   if (!req.session.userId)

@@ -163,10 +163,20 @@ async function adminUsers(content) {
   content.innerHTML = `<div class="admin-list">${data.items
     .map(
       (u) =>
-        `<article class="admin-item"><div><strong>${esc(u.name)}</strong><p class="muted">${esc(u.email)}${u.company ? ` · ${esc(u.company)}` : ""} · объявлений: ${u.propertyCount} · регистрация ${new Date(u.createdAt).toLocaleDateString("ru-RU")}</p></div><div class="admin-item-actions">${
-          u.blocked
-            ? `<span class="admin-status archived">Заблокирован</span><button class="button secondary" data-unblock="${u.id}">Разблокировать</button>`
-            : `<button class="button danger" data-block="${u.id}">Заблокировать</button>`
+        `<article class="admin-item"><div><strong>${esc(u.name)}</strong>${u.admin ? ' <span class="admin-status published">Админ</span>' : ""}<p class="muted">${esc(u.email)}${u.company ? ` · ${esc(u.company)}` : ""} · объявлений: ${u.propertyCount} · регистрация ${new Date(u.createdAt).toLocaleDateString("ru-RU")}</p></div><div class="admin-item-actions">${
+          u.bootstrap
+            ? '<span class="admin-status published">Основной админ</span>'
+            : `${
+                String(u.id) === String(state.user.id)
+                  ? ""
+                  : u.admin
+                    ? `<button class="button secondary" data-demote="${u.id}">Снять права</button>`
+                    : `<button class="button secondary" data-promote="${u.id}">Назначить админом</button>`
+              }${
+                u.blocked
+                  ? `<span class="admin-status archived">Заблокирован</span><button class="button secondary" data-unblock="${u.id}">Разблокировать</button>`
+                  : `<button class="button danger" data-block="${u.id}">Заблокировать</button>`
+              }`
         }</div></article>`,
     )
     .join("")}</div><nav class="pagination" aria-label="Страницы">${Array.from(
@@ -174,21 +184,17 @@ async function adminUsers(content) {
     (_, i) =>
       `<a class="${i + 1 === data.page ? "active" : ""}" href="/admin?tab=users&page=${i + 1}">${i + 1}</a>`,
   ).join("")}</nav>`;
-  const wire = (selector, blocked, confirmText) =>
+  const wire = (selector, key, body, message, confirmText) =>
     content.querySelectorAll(selector).forEach((button) => {
       button.onclick = async () => {
         if (confirmText && !confirm(confirmText)) return;
         button.disabled = true;
         try {
-          await api(
-            "/admin/users/" + button.dataset[blocked ? "block" : "unblock"],
-            { method: "PATCH", body: { blocked } },
-          );
-          toast(
-            blocked
-              ? "Пользователь заблокирован"
-              : "Пользователь разблокирован",
-          );
+          await api("/admin/users/" + button.dataset[key], {
+            method: "PATCH",
+            body,
+          });
+          toast(message);
           await adminPage();
         } catch (error) {
           toast(error.message);
@@ -198,15 +204,55 @@ async function adminUsers(content) {
     });
   wire(
     "[data-block]",
-    true,
+    "block",
+    { blocked: true },
+    "Пользователь заблокирован",
     "Заблокировать пользователя? Он потеряет доступ к аккаунту.",
   );
-  wire("[data-unblock]", false, "");
+  wire(
+    "[data-unblock]",
+    "unblock",
+    { blocked: false },
+    "Пользователь разблокирован",
+  );
+  wire("[data-promote]", "promote", { admin: true }, "Права админа выданы");
+  wire(
+    "[data-demote]",
+    "demote",
+    { admin: false },
+    "Права админа сняты",
+    "Снять права администратора? Он потеряет доступ к админ-панели.",
+  );
 }
 
 async function adminContent(content) {
-  const c = await api("/admin/content");
-  content.innerHTML = `<form id="content-form" class="form-sheet" novalidate><section class="form-section"><h2>Тексты главной страницы</h2><p class="form-help">Заголовок и подзаголовок первого экрана, название и текст блока «Как мы зарабатываем». Изменения появятся на главной сразу после сохранения.</p><div class="form-grid"><label class="field full">Заголовок (H1)<input name="heroTitle" value="${esc(c.heroTitle)}" required minlength="5" maxlength="300"><span class="field-error" data-error="heroTitle"></span></label><label class="field full">Подзаголовок hero<textarea name="heroText" rows="3" required minlength="10" maxlength="1000">${esc(c.heroText)}</textarea><span class="field-error" data-error="heroText"></span></label><label class="field full">Название блока комиссии<input name="commissionTitle" value="${esc(c.commissionTitle)}" required minlength="3" maxlength="300"><span class="field-error" data-error="commissionTitle"></span></label><label class="field full">Текст блока комиссии<textarea name="commissionText" rows="3" required minlength="10" maxlength="1000">${esc(c.commissionText)}</textarea><span class="field-error" data-error="commissionText"></span></label></div><div class="form-error" role="alert" tabindex="-1"></div><div class="form-actions"><button class="button" type="submit">Сохранить тексты</button></div></section></form>`;
+  const [values, fields] = await Promise.all([
+    api("/admin/content"),
+    api("/admin/content-fields"),
+  ]);
+  const groups = new Map();
+  for (const field of fields) {
+    if (!groups.has(field.group)) groups.set(field.group, []);
+    groups.get(field.group).push(field);
+  }
+  content.innerHTML = `<form id="content-form" class="form-sheet" novalidate>${[
+    ...groups,
+  ]
+    .map(
+      ([group, items]) =>
+        `<section class="form-section"><h2>${esc(group)}</h2><p class="form-help">Изменения появятся на сайте сразу после сохранения.</p><div class="form-grid">${items
+          .map((field) => {
+            const value = esc(values[field.key] ?? "");
+            const control = field.multiline
+              ? `<textarea name="${esc(field.key)}" rows="3" required minlength="${field.min}" maxlength="${field.max}">${value}</textarea>`
+              : `<input name="${esc(field.key)}" value="${value}" required minlength="${field.min}" maxlength="${field.max}">`;
+            return `<label class="field full">${esc(field.label)}${control}<span class="field-error" data-error="${esc(field.key)}"></span></label>`;
+          })
+          .join("")}</div></section>`,
+    )
+    .join(
+      "",
+    )}<div class="form-error" role="alert" tabindex="-1"></div><div class="form-actions"><button class="button" type="submit">Сохранить тексты</button></div></form>`;
   const form = document.querySelector("#content-form");
   form.onsubmit = async (event) => {
     event.preventDefault();
@@ -216,7 +262,7 @@ async function adminContent(content) {
         method: "PUT",
         body: Object.fromEntries(new FormData(form)),
       });
-      toast("Тексты главной сохранены");
+      toast("Тексты сайта сохранены");
     } catch (error) {
       errors(form, error);
     } finally {

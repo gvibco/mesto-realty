@@ -109,7 +109,7 @@ test("browser: account, listing lifecycle, responsiveness and recovery", async (
         });
       });
       await page.goto(base + "/");
-      const launch = page.getByRole("button", { name: "Подобрать с ИИ" });
+      const launch = page.locator(".hero [data-assistant-open]").first();
       await launch.click();
       const dialog = page.getByRole("dialog", { name: "Помощник по подбору" });
       await page

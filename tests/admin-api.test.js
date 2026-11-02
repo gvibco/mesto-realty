@@ -103,7 +103,7 @@ after(async () => {
   await pool.end();
 });
 
-test("session reports isAdmin only for ADMIN_EMAIL", async () => {
+test("session reports effective admin rights", async () => {
   const a = await admin.get("/api/auth/session").expect(200);
   assert.equal(a.body.isAdmin, true);
   const u = await user.get("/api/auth/session").expect(200);
@@ -235,16 +235,94 @@ test("admin dashboard, listings and user management", async () => {
   assert.equal(unblocked.status, 200);
 });
 
+test("admin can grant and revoke admin rights without self-lockout", async () => {
+  const adminId = (
+    await pool.query("SELECT id FROM users WHERE email=$1", [ADMIN_EMAIL])
+  ).rows[0].id;
+  const self = await admin
+    .patch(`/api/admin/users/${adminId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ admin: false });
+  assert.equal(self.status, 422, "самоснятие прав запрещено");
+
+  const promote = await admin
+    .patch(`/api/admin/users/${userId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ admin: true });
+  assert.equal(promote.status, 200);
+  assert.equal(promote.body.admin, true);
+  // Предыдущий тест блокировки удалил старые сессии пользователя —
+  // входим заново, чтобы проверить обновлённые права.
+  let login = await user.get("/api/auth/session").expect(200);
+  login = await user
+    .post("/api/auth/login")
+    .set("X-CSRF-Token", login.body.csrfToken)
+    .send({ email: userEmail, password });
+  assert.equal(login.status, 200);
+  userToken = login.body.csrfToken;
+  const session = await user.get("/api/auth/session").expect(200);
+  assert.equal(session.body.isAdmin, true);
+  await user.get("/api/admin/stats").expect(200);
+
+  const bootstrap = await user
+    .patch(`/api/admin/users/${adminId}`)
+    .set("X-CSRF-Token", userToken)
+    .send({ admin: false });
+  assert.equal(bootstrap.status, 422, "ADMIN_EMAIL нельзя разжаловать");
+
+  const blockBootstrap = await user
+    .patch(`/api/admin/users/${adminId}`)
+    .set("X-CSRF-Token", userToken)
+    .send({ blocked: true });
+  assert.equal(blockBootstrap.status, 422, "ADMIN_EMAIL нельзя заблокировать");
+
+  const mixedSelf = await admin
+    .patch(`/api/admin/users/${adminId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ blocked: false, admin: true });
+  assert.equal(mixedSelf.status, 422);
+  const untouched = (
+    await pool.query("SELECT is_blocked,is_admin FROM users WHERE id=$1", [
+      adminId,
+    ])
+  ).rows[0];
+  assert.equal(untouched.is_blocked, false, "422 не меняет блокировку");
+  assert.equal(untouched.is_admin, false, "422 не меняет права");
+
+  const demote = await admin
+    .patch(`/api/admin/users/${userId}`)
+    .set("X-CSRF-Token", adminToken)
+    .send({ admin: false });
+  assert.equal(demote.status, 200);
+  assert.equal(demote.body.admin, false);
+  const after = await user.get("/api/auth/session").expect(200);
+  assert.equal(after.body.isAdmin, false);
+  assert.equal((await user.get("/api/admin/stats")).status, 403);
+});
+
 test("content: public defaults, admin edit, validation", async () => {
   const pub = await request(app).get("/api/content").expect(200);
   assert.match(pub.body.heroTitle, /48 часов/);
   assert.match(pub.body.commissionText, /1%/);
+
+  const fields = await admin.get("/api/admin/content-fields").expect(200);
+  assert.ok(
+    fields.body.some(
+      (field) => field.key === "heroTitle" && field.group && field.label,
+    ),
+  );
+  const missing = await admin
+    .put("/api/admin/content")
+    .set("X-CSRF-Token", adminToken)
+    .send({ heroTitle: "Только один ключ" });
+  assert.equal(missing.status, 422, "полная замена требует все ключи");
 
   const before = { ...pub.body };
   const updated = await admin
     .put("/api/admin/content")
     .set("X-CSRF-Token", adminToken)
     .send({
+      ...before,
       heroTitle: "Новый заголовок главной",
       heroText: "Новый подзаголовок главной страницы.",
       commissionTitle: "Новое название блока",

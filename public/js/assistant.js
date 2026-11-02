@@ -3,7 +3,7 @@ import { api, categories, money } from "./core.js";
 export function initAssistant() {
   const root = document.querySelector("#assistant");
   if (!root) return;
-  root.innerHTML = `<button class="assistant-launch" type="button" aria-controls="assistant-panel" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Z"/><path d="M8 8h8M8 12h5"/></svg>Подобрать с ИИ</button>
+  root.innerHTML = `<button class="assistant-launch" type="button" aria-controls="assistant-panel" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Z"/><path d="M8 8h8M8 12h5"/></svg><span>Подобрать с ИИ</span></button>
     <section id="assistant-panel" class="assistant-panel" role="dialog" aria-modal="true" aria-labelledby="assistant-title" hidden>
       <header class="assistant-header"><div><h2 id="assistant-title">Помощник по подбору</h2><p>Коммерческая недвижимость</p></div><button type="button" class="assistant-close" aria-label="Закрыть помощника">×</button></header>
       <div class="assistant-log" role="log" aria-label="Диалог с помощником" aria-live="polite" aria-relevant="additions"><div class="assistant-message">Расскажите, какое помещение ищете: город, назначение, аренда или покупка, бюджет и площадь.</div></div>
@@ -20,6 +20,9 @@ export function initAssistant() {
   const log = root.querySelector(".assistant-log");
   const errorBox = root.querySelector(".assistant-error");
   const send = form.querySelector('button[type="submit"]');
+  // На главной кнопка живёт в hero, плавающая не нужна.
+  if ((location.pathname.replace(/\/$/, "") || "/") === "/")
+    root.classList.add("home");
   let history = [];
   let pending = false;
   let previousFocus;
@@ -27,11 +30,15 @@ export function initAssistant() {
   const close = () => {
     panel.hidden = true;
     launch.setAttribute("aria-expanded", "false");
-    (previousFocus?.isConnected ? previousFocus : launch).focus();
+    const target = previousFocus?.isConnected ? previousFocus : launch;
+    if (target.getClientRects().length) target.focus();
   };
-  launch.onclick = async () => {
-    if (!panel.hidden) return close();
-    previousFocus = document.activeElement;
+  const open = async (trigger) => {
+    if (!panel.hidden) {
+      input.focus();
+      return;
+    }
+    previousFocus = trigger || document.activeElement;
     panel.hidden = false;
     launch.setAttribute("aria-expanded", "true");
     input.focus();
@@ -42,7 +49,7 @@ export function initAssistant() {
         checked = true;
         send.disabled = !enabled || pending;
         if (mode === "catalog") {
-          launch.lastChild.textContent = "Подобрать объект";
+          launch.lastElementChild.textContent = "Подобрать объект";
           root.querySelector(".assistant-notice").textContent =
             "Подбор по каталогу: город, назначение, бюджет и площадь. Проверяйте условия в карточке объекта.";
         }
@@ -61,6 +68,19 @@ export function initAssistant() {
       }
     }
   };
+  launch.onclick = () => {
+    if (!panel.hidden) return close();
+    open(launch);
+  };
+  document.addEventListener("click", (event) => {
+    const trigger =
+      event.target instanceof Element
+        ? event.target.closest("[data-assistant-open]")
+        : null;
+    if (!trigger) return;
+    event.preventDefault();
+    open(trigger);
+  });
   root.querySelector(".assistant-close").onclick = close;
   panel.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {

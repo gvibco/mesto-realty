@@ -116,7 +116,7 @@ test("home shows the commission block and no pricing remnants", async () => {
   );
   assert.match(
     await section.locator("#commission-text").textContent(),
-    /1%\s*только с успешной продажи/,
+    /1%\s*с покупки,\s*40%\s*месячной аренды/,
   );
   assert.equal(await page.locator(".pricing-card").count(), 0);
   assert.equal(await page.locator(".sub-request").count(), 0);
@@ -134,11 +134,13 @@ test("sale property shows the 1% commission note", async () => {
   await page.close();
 });
 
-test("rent property has no commission note", async () => {
+test("rent property shows the 40% monthly rent commission note", async () => {
   const page = await browser.newPage();
   await page.goto(base() + "/property/2", { waitUntil: "networkidle" });
-  await page.locator(".contact-panel").waitFor();
-  assert.equal(await page.locator(".commission-note").count(), 0);
+  const note = page.locator(".commission-note");
+  await note.waitFor();
+  const text = (await note.textContent()).replace(/[\u00a0\u202f]/g, " ");
+  assert.match(text, /Комиссия сервиса: 40% месячной аренды — 60\s?000\s?₽/);
   await page.close();
 });
 

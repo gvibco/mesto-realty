@@ -15,7 +15,6 @@
     if (!button) return;
     function sync() {
       var dark = document.documentElement.dataset.theme === "dark";
-      button.textContent = dark ? "☀️" : "🌙";
       button.setAttribute(
         "aria-label",
         dark ? "Включить светлую тему" : "Включить тёмную тему",

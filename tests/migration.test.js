@@ -90,3 +90,80 @@ test("B2B migration removes residential stock, preserves accounts and actual com
     await client.end();
   }
 });
+
+test("admin migration adds the is_admin column to existing users", async () => {
+  if (
+    !process.env.TEST_DATABASE_URL ||
+    !new URL(process.env.TEST_DATABASE_URL).pathname.endsWith("_test")
+  )
+    throw new Error("Dedicated _test database required");
+  const client = new pg.Client({
+    connectionString: process.env.TEST_DATABASE_URL,
+  });
+  await client.connect();
+  try {
+    await client.query("BEGIN");
+    const schema = `migration_admin_${process.pid}`;
+    await client.query(`CREATE SCHEMA ${schema}`);
+    await client.query(`SET LOCAL search_path TO ${schema}`);
+    for (const name of [
+      "001_initial.sql",
+      "002_commercial_b2b.sql",
+      "006_admin_content.sql",
+    ])
+      await client.query(
+        await readFile(
+          new URL(`../migrations/${name}`, import.meta.url),
+          "utf8",
+        ),
+      );
+    const before = await client.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_schema = $1 AND table_name = 'users' AND column_name = 'is_admin'`,
+      [schema],
+    );
+    assert.equal(before.rowCount, 0);
+    await client.query(
+      "UPDATE site_settings SET value=$1 WHERE key='heroTitle'",
+      [
+        "Подберём помещение под ваш бизнес за 48 часов — платите только 1% при сделке",
+      ],
+    );
+    await client.query(
+      "UPDATE site_settings SET value=$1 WHERE key='commissionTitle'",
+      ["Мой заголовок комиссии"],
+    );
+    await client.query(
+      await readFile(
+        new URL("../migrations/007_admins.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    const after = await client.query(
+      `SELECT column_name,is_nullable,column_default FROM information_schema.columns
+       WHERE table_schema = $1 AND table_name = 'users' AND column_name = 'is_admin'`,
+      [schema],
+    );
+    assert.equal(after.rowCount, 1);
+    assert.equal(after.rows[0].is_nullable, "NO");
+    assert.equal(after.rows[0].column_default, "false");
+    const copy = Object.fromEntries(
+      (
+        await client.query(
+          "SELECT key,value FROM site_settings WHERE key IN ('heroTitle','heroText','commissionText','commissionTitle')",
+        )
+      ).rows.map((row) => [row.key, row.value]),
+    );
+    assert.equal(copy.heroTitle, "Помещение для бизнеса — за 48 часов");
+    assert.match(copy.heroText, /40% месячной аренды/);
+    assert.match(copy.commissionText, /40% месячной аренды/);
+    assert.equal(
+      copy.commissionTitle,
+      "Мой заголовок комиссии",
+      "кастомный текст не затирается",
+    );
+  } finally {
+    await client.query("ROLLBACK");
+    await client.end();
+  }
+});

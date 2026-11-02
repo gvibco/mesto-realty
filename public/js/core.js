@@ -49,6 +49,11 @@ export const taxLabels = {
 export const rate = (p) =>
   money(Math.round(p.price / p.area)) +
   (p.deal === "rent" ? " / м² / мес." : " / м²");
+export const COMMISSION = { sale: 0.01, rent: 0.4 };
+export const commissionPercent = (deal) =>
+  Math.round(COMMISSION[deal === "rent" ? "rent" : "sale"] * 100);
+export const commissionFor = (p) =>
+  Math.round(Number(p.price) * COMMISSION[p.deal === "rent" ? "rent" : "sale"]);
 export function propertyFacts(p) {
   const facts = [
     [p.area + " м²", "Площадь"],
@@ -205,7 +210,7 @@ export const empty = (
   href = "/catalog",
   label = "Открыть каталог",
 ) =>
-  `<div class="empty"><span class="empty-mark">место.</span><h2>${esc(title)}</h2><p>${esc(body)}</p><a class="button" href="${href}">${label}</a></div>`;
+  `<div class="empty"><span class="empty-mark">место.</span><h2>${esc(title)}</h2><p>${esc(body)}</p><a class="button" href="${esc(href)}">${esc(label)}</a></div>`;
 export function wireFavorites(root = document) {
   root.querySelectorAll("[data-favorite]").forEach((b) =>
     b.addEventListener("click", async () => {

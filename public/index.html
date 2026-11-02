@@ -6,10 +6,10 @@
     <meta name="theme-color" content="#235ee8" />
     <meta
       name="description"
-      content="Подберём помещение под ваш бизнес за 48 часов. Офисы, склады и торговые площади от собственников: размещение и аренда бесплатны, комиссия 1% — только с успешной продажи."
+      content="Подберём помещение под ваш бизнес за 48 часов. Офисы, склады и торговые площади от собственников: 1% с покупки, 40% месячной аренды, размещение бесплатно."
     />
     <title>
-      Место Бизнес — коммерческая недвижимость: 1% с продажи, аренда бесплатно
+      Место Бизнес — коммерческая недвижимость: 1% с покупки, 40% аренды
     </title>
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
     <link
@@ -52,7 +52,34 @@
             type="button"
             aria-label="Включить тёмную тему"
           >
-            🌙
+            <svg
+              class="theme-icon theme-icon-moon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"
+              />
+            </svg>
+            <svg
+              class="theme-icon theme-icon-sun"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3.6" />
+              <path
+                d="M12 2.8v2.2M12 19v2.2M4.4 4.4l1.6 1.6M18 18l1.6 1.6M2.8 12H5M19 12h2.2M4.4 19.6 6 18M18 6l1.6-1.6"
+              />
+            </svg>
           </button>
           <a class="favorite-nav" href="/account?tab=favorites"
             >♡ &nbsp;Избранное</a
@@ -67,7 +94,9 @@
     <footer>
       <div class="container footer-inner">
         <a class="logo" href="/">место<span>БИЗНЕС</span></a>
-        <p>Коммерческая недвижимость для деловых решений.</p>
+        <p data-content="footerTagline">
+          Коммерческая недвижимость для деловых решений.
+        </p>
         <a class="arrow-link" href="/catalog">Каталог объектов</a
         ><small>© 2026 Место Бизнес</small>
       </div>
