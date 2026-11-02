@@ -10,7 +10,7 @@ export function initAssistant() {
       <div class="assistant-examples"><button type="button">Офис в Москве в аренду</button><button type="button">Склад до 300 м²</button></div>
       <p class="assistant-notice">Ответы создаёт ИИ. Проверяйте условия в карточке объекта. Не отправляйте личные данные.</p>
       <p class="assistant-error" role="alert" hidden></p>
-      <form class="assistant-form"><label for="assistant-input">Ваш запрос</label><div><textarea id="assistant-input" rows="3" maxlength="2000" required enterkeyhint="send" placeholder="Например, офис до 200 000 ₽ в месяц"></textarea><button type="submit" class="button">Отправить</button></div></form>
+      <form class="assistant-form"><label for="assistant-input">Ваш запрос</label><div><textarea id="assistant-input" rows="3" maxlength="2000" required enterkeyhint="send" aria-describedby="assistant-input-hint" placeholder="Например, офис до 200 000 ₽ в месяц"></textarea><button type="submit" class="button">Отправить</button></div><p class="assistant-hint" id="assistant-input-hint">Enter — отправить, Shift+Enter — новая строка</p></form>
       <a class="assistant-catalog" href="/catalog">Искать самостоятельно в каталоге ↗</a>
     </section>`;
   const launch = root.querySelector(".assistant-launch");
