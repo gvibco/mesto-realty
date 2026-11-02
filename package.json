@@ -16,14 +16,11 @@
     "test:api": "node --test --test-concurrency=1 tests/migration.test.js tests/api.test.js tests/production.test.js tests/seed-recovery.test.js tests/room-models-api.test.js tests/architectural-api.test.js tests/admin-api.test.js",
     "test:browser": "node --test tests/browser.test.js",
     "format:check": "prettier --check public server scripts tests",
-    "build:room-viewer": "node scripts/build-room-viewer.js",
-    "test:room-browser": "node --test tests/architectural-browser.test.js",
     "build:architecture-viewer": "node scripts/build-architectural-viewer.js",
     "test:architecture": "node --test tests/architectural-schema.test.js tests/architectural-analysis.test.js tests/architectural-geometry.test.js",
     "test:architecture-browser": "node --test tests/architectural-browser.test.js"
   },
   "dependencies": {
-    "@mkkellogg/gaussian-splats-3d": "0.4.7",
     "bcrypt": "^6.0.0",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^18.0.5",
@@ -38,7 +35,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@fontsource-variable/manrope": "^5.3.0",
     "esbuild": "0.28.2",
     "playwright": "^1.63.0",
     "prettier": "^3.9.9",

@@ -85,7 +85,10 @@ public/
   js/forms.js                авторизация, кабинет, редактор
   js/admin.js                админ-панель (/admin)
   js/theme.js                тёмная тема: cookie и переключатель
-  assets/                    локальные фото, шрифт, лицензии
+  js/assistant.js            чат «Подобрать с ИИ»
+  js/room-model.js           3D-модель помещения в карточке объекта
+  js/architectural-*.js      архитектурная модель: схема, геометрия, ввод
+  assets/                    локальные фото, шрифт, лицензии, vendor-бандлы
 server/
   index.js                   HTTP-сервер и корректное завершение
   app.js                     Express, CSP, сессии, маршруты, ошибки
@@ -100,16 +103,30 @@ server/
   property-data.js           параметризованный поиск и DTO
   uploads.js                 обработка фото, доступ, очистка файлов
   validation.js              серверные схемы данных
-migrations/001_initial.sql   таблицы, ограничения, индексы
-migrations/002_commercial_b2b.sql коммерческие категории и профили компаний
-migrations/006_admin_content.sql блокировки пользователей и site_settings
+  assistant.js               маршруты API ассистента
+  assistant-service.js       вызовы ИИ-модели (function calling)
+  catalog-assistant.js       подбор по каталогу без модели (правила)
+  room-models.js             3D-модели помещений: очередь и API
+  room-model-validation.js   валидация данных моделей
+  architectural-*.js         архитектурные модели: API, хранилище, анализ, схема
+migrations/
+  001_initial.sql            таблицы, ограничения, индексы
+  002_commercial_b2b.sql     коммерческие категории и профили компаний
+  003_room_models.sql        очередь и хранение 3D-моделей помещений
+  004_architectural_models.sql входные данные и задания архитектурных моделей
+  005_subscription_requests.sql прежняя таблица подписок (сохранена решением)
+  006_admin_content.sql      блокировки пользователей и site_settings
 scripts/setup-env.js         безопасная первичная настройка .env
 scripts/seed.js              повторяемое заполнение базы
+scripts/seed-media.js        восстановление демофотографий
 scripts/download-assets.js   необязательное обновление демофотографий
-tests/                      валидация, API, production, браузер
-docs/                       план, проверка и отчёт ревью
-.env.example                пример конфигурации без секретов
-compose.yaml                PostgreSQL с постоянным томом
+scripts/import-listing.js    разовый импорт объявления через REST API
+scripts/build-architectural-viewer.js сборка бандла архитектурного просмотрщика
+worker/                      локальный GPU-обработчик (Python, Docker) для генерации моделей
+tests/                       валидация, API, production, браузер, воркер (Python)
+docs/                        планы, спецификации, проверки и отчёты ревью
+.env.example                 пример конфигурации без секретов
+compose.yaml                 PostgreSQL с постоянным томом
 ```
 
 ## База данных

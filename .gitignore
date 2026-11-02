@@ -7,6 +7,8 @@ uploads/
 output/
 test-results/
 .playwright-mcp/
+.playwright-cli/
+.superpowers/
 *.log
 __pycache__/
 *.pyc

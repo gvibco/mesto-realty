@@ -11,3 +11,9 @@ uploads
 output
 test-results
 .playwright-mcp
+.playwright-cli
+.superpowers
+docs
+worker
+AGENTS.md
+compose.yaml

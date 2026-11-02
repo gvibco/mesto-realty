@@ -1,5 +1,2 @@
-# Generated, pinned third-party browser bundle. Rebuild with npm run build:room-viewer.
-public/assets/vendor/room-viewer.js
 # Generated architectural bundle and extracted upstream viewer styles.
 public/assets/vendor/architectural-viewer.js
-public/assets/vendor/room-viewer.css
