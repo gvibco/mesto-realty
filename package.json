@@ -18,7 +18,9 @@
     "format:check": "prettier --check public server scripts tests",
     "build:architecture-viewer": "node scripts/build-architectural-viewer.js",
     "test:architecture": "node --test tests/architectural-schema.test.js tests/architectural-analysis.test.js tests/architectural-geometry.test.js",
-    "test:architecture-browser": "node --test tests/architectural-browser.test.js"
+    "test:architecture-browser": "node --test tests/architectural-browser.test.js",
+    "preflight": "node scripts/preflight.js",
+    "verify:live": "node --dns-result-order=ipv4first scripts/verify-live.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
