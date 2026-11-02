@@ -27,9 +27,18 @@ export function initAssistant() {
   let pending = false;
   let previousFocus;
   let checked = false;
+  const triggers = () => [
+    launch,
+    ...document.querySelectorAll("[data-assistant-open]"),
+  ];
+  const setExpanded = (value) =>
+    triggers().forEach((element) => {
+      element.setAttribute("aria-controls", "assistant-panel");
+      element.setAttribute("aria-expanded", String(value));
+    });
   const close = () => {
     panel.hidden = true;
-    launch.setAttribute("aria-expanded", "false");
+    setExpanded(false);
     const target = previousFocus?.isConnected ? previousFocus : launch;
     if (target.getClientRects().length) target.focus();
   };
@@ -40,7 +49,7 @@ export function initAssistant() {
     }
     previousFocus = trigger || document.activeElement;
     panel.hidden = false;
-    launch.setAttribute("aria-expanded", "true");
+    setExpanded(true);
     input.focus();
     if (!checked) {
       send.disabled = true;
@@ -50,6 +59,8 @@ export function initAssistant() {
         send.disabled = !enabled || pending;
         if (mode === "catalog") {
           launch.lastElementChild.textContent = "Подобрать объект";
+          root.querySelector(".assistant-header p").textContent =
+            "Подбор по каталогу";
           root.querySelector(".assistant-notice").textContent =
             "Подбор по каталогу: город, назначение, бюджет и площадь. Проверяйте условия в карточке объекта.";
         }

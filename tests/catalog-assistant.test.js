@@ -19,6 +19,7 @@ test("catalog assistant clarifies unknown city changes instead of searching the 
   ]);
   assert.equal(searched, false);
   assert.match(result.reply, /город|Туле|туле/i);
+  assert.match(result.reply, /Подбор по каталогу/);
 });
 test("a new one-sided area limit replaces an earlier range", async () => {
   let filters;

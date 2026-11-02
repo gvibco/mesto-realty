@@ -74,6 +74,20 @@ test("home shows AI call to action in the hero and hides the floating launcher",
   await page.locator(".hero [data-assistant-open]").first().click();
   await page.locator("#assistant-panel").waitFor();
   assert.ok(await page.locator("#assistant-panel").isVisible());
+  assert.equal(
+    await page
+      .locator(".hero [data-assistant-open]")
+      .first()
+      .getAttribute("aria-expanded"),
+    "true",
+  );
+  assert.equal(
+    await page
+      .locator(".hero [data-assistant-open]")
+      .first()
+      .getAttribute("aria-controls"),
+    "assistant-panel",
+  );
   await page.close();
 });
 
