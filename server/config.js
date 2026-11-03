@@ -11,6 +11,7 @@ if (!process.env.DATABASE_URL) throw new Error("Не задан DATABASE_URL");
 const origin = process.env.APP_ORIGIN || "http://localhost:3000";
 if (production && !origin.startsWith("https://"))
   throw new Error("В production APP_ORIGIN должен использовать HTTPS");
+const aiBaseUrl = process.env.AI_BASE_URL || "https://api.openai.com/v1";
 const boundedInteger = (value, fallback, min, max) => {
   const parsed = value === undefined || value === "" ? fallback : Number(value);
   return Math.max(
@@ -40,6 +41,14 @@ export const config = {
   ai: {
     apiKey: process.env.AI_API_KEY || "",
     model: process.env.AI_MODEL || "",
-    baseUrl: process.env.AI_BASE_URL || "https://api.openai.com/v1",
+    baseUrl: aiBaseUrl,
+    provider: (
+      process.env.AI_PROVIDER ||
+      (aiBaseUrl.includes("giga.chat") ? "gigachat" : "openai")
+    ).toLowerCase(),
+    oauthUrl:
+      process.env.AI_OAUTH_URL ||
+      "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+    scope: process.env.AI_SCOPE || "GIGACHAT_API_PERS",
   },
 };

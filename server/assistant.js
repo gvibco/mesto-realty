@@ -3,6 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import { config } from "./config.js";
 import { listProperties } from "./property-data.js";
 import { createAssistant } from "./assistant-service.js";
+import { createGigaChatAssistant } from "./gigachat-assistant.js";
 import { createCatalogAssistant } from "./catalog-assistant.js";
 import { pool } from "./db.js";
 
@@ -12,7 +13,9 @@ export function assistantRouter({ chat, enabled = true } = {}) {
   const respond =
     chat ||
     (mode === "ai"
-      ? createAssistant({ ...config.ai, search: listProperties })
+      ? config.ai.provider === "gigachat"
+        ? createGigaChatAssistant({ ...config.ai, search: listProperties })
+        : createAssistant({ ...config.ai, search: listProperties })
       : createCatalogAssistant({
           search: listProperties,
           locations: async () =>
