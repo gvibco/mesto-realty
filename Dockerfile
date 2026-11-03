@@ -9,7 +9,6 @@ RUN npm ci --omit=dev
 COPY . .
 
 ENV NODE_ENV=production
-ENV NODE_EXTRA_CA_CERTS=/app/certs/russian-trusted.pem
 
 EXPOSE 3000
 
